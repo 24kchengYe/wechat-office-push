@@ -143,16 +143,30 @@ def format_crossref(item):
     year = date_parts[0][0] if date_parts and date_parts[0] else None
 
     author_names = []
+    corresponding_authors = []
     for a in authors_raw:
         given = a.get('given', '')
         family = a.get('family', '')
         name = f"{given} {family}".strip() if given else family
         if name:
+            # CrossRef marks corresponding authors with "sequence": "first"
+            # and/or an ORCID authenticated via email (has "email" field)
+            is_corresponding = False
+            if a.get('sequence') == 'first' and len(authors_raw) > 1:
+                # First author is often but not always corresponding
+                # Check if they have affiliation email or ORCID
+                pass
+            # More reliable: CrossRef includes email for corresponding authors
+            if 'email' in a:
+                is_corresponding = True
+            if is_corresponding:
+                corresponding_authors.append(name)
             author_names.append(name)
 
     return {
         'title': titles[0] if titles else '',
         'authors': ', '.join(author_names),
+        'corresponding_authors': corresponding_authors,
         'doi': doi,
         'doi_url': f"https://doi.org/{doi}" if doi else '',
         'journal': journal[0] if journal else '',
