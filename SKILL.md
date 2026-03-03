@@ -1,11 +1,11 @@
 ---
-name: bcl-paper-push
-description: "Generate WeChat public account (公众号) article content for Beijing City Lab (北京城市实验室BCL). Use this skill whenever the user mentions: 公众号推送, 论文推荐, paper recommendation, BCL推送, 写推送, 推文, 公众号文章, WeChat article, 推送论文, 做一个推送, 帮我推论文, 论文推送, 生成推文, or any task related to creating content for the BCL WeChat public account. Currently supports '论文推荐' (paper recommendation) category."
+name: wechat-article-push
+description: "Generate WeChat public account (公众号) article/push content. Use this skill whenever the user mentions: 公众号推送, 论文推荐, paper recommendation, 写推送, 推文, 公众号文章, WeChat article, 推送论文, 做一个推送, 帮我推论文, 论文推送, 生成推文, 会议推荐, MOOC推送, 征文启事, 教研动态, or any task related to creating content for a WeChat public account. Currently supports '论文推荐' (paper recommendation) category."
 ---
 
-# BCL 公众号推送 Skill
+# 公众号推送 Skill
 
-为北京城市实验室 (Beijing City Lab) 公众号生成推送内容。
+为微信公众号生成推送内容，支持论文推荐、会议推荐、MOOC推送等多种类别。
 
 ## Supported Categories
 
@@ -34,7 +34,8 @@ If the user does not specify paths, ask if they want to use the default or provi
 Ask the user for:
 1. **Input path**: Folder containing paper PDFs (default: `F:/BCL/公众号/论文推荐`)
 2. **Output path**: Where to save results (default: same as input, with subfolders per paper)
-3. **责任编辑 (Editor in charge)**: Name(s) for the footer
+
+**责任编辑** defaults to **张业成**, no need to ask unless the user specifies otherwise.
 
 ### Step 2: Process Each PDF
 
@@ -177,7 +178,7 @@ After processing all PDFs:
 - 使用当天日期和当前时间（约整到分钟）作为默认发布时间。
 - 论文展示图片目标 4-5 张，优先选择标题页和含图表的页面。
 - 固定尾部内容不要修改，除了"责任编辑"需要填入用户提供的编辑姓名。
-- 如果用户没有提供责任编辑姓名，留空并提醒用户补充。
+- 责任编辑默认填写"张业成"，用户指定其他人时才修改。
 
 ## Error Handling
 
