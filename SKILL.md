@@ -1,5 +1,5 @@
 ---
-name: wechat-article-push
+name: wechat-office-push
 description: "Generate WeChat public account (公众号) article/push content. Use this skill whenever the user mentions: 公众号推送, 论文推荐, paper recommendation, 写推送, 推文, 公众号文章, WeChat article, 推送论文, 做一个推送, 帮我推论文, 论文推送, 生成推文, 会议推荐, MOOC推送, 征文启事, 教研动态, or any task related to creating content for a WeChat public account. Currently supports '论文推荐' (paper recommendation) category."
 ---
 
@@ -45,7 +45,7 @@ For each `.pdf` file found in the input folder, run:
 python "<skill_dir>/scripts/extract_pdf.py" "<pdf_path>" "<output_dir>/<paper_subfolder>" --max-images 5
 ```
 
-Where `<skill_dir>` is the directory where this skill is installed (e.g., `~/.claude/skills/wechat-article-push`)
+Where `<skill_dir>` is the directory where this skill is installed (e.g., `~/.claude/skills/wechat-office-push`)
 
 This script will:
 - Extract metadata: title, authors, abstract, journal, DOI
