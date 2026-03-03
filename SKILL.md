@@ -21,7 +21,7 @@ pip install PyMuPDF requests
 
 ## Default Paths
 
-- **默认工作目录**: `F:/BCL/公众号/论文推荐`
+- **默认工作目录**: `~/wechat-articles/论文推荐`
 - Input: PDF files in the working directory (or user-specified path)
 - Output: Markdown + images in subfolders within the working directory (or user-specified output path)
 
@@ -32,10 +32,10 @@ If the user does not specify paths, ask if they want to use the default or provi
 ### Step 1: Determine Input
 
 Ask the user for:
-1. **Input path**: Folder containing paper PDFs (default: `F:/BCL/公众号/论文推荐`)
+1. **Input path**: Folder containing paper PDFs (default: `~/wechat-articles/论文推荐`)
 2. **Output path**: Where to save results (default: same as input, with subfolders per paper)
 
-**责任编辑** defaults to **张业成**, no need to ask unless the user specifies otherwise.
+**责任编辑** should be asked on first use. Once the user provides a name, remember it for subsequent runs.
 
 ### Step 2: Process Each PDF
 
@@ -45,7 +45,7 @@ For each `.pdf` file found in the input folder, run:
 python "<skill_dir>/scripts/extract_pdf.py" "<pdf_path>" "<output_dir>/<paper_subfolder>" --max-images 5
 ```
 
-Where `<skill_dir>` is: `C:/Users/ASUS/.claude/skills/bcl-paper-push`
+Where `<skill_dir>` is the directory where this skill is installed (e.g., `~/.claude/skills/wechat-article-push`)
 
 This script will:
 - Extract metadata: title, authors, abstract, journal, DOI
@@ -101,7 +101,7 @@ For each paper, generate a Markdown file following this EXACT template structure
 ```markdown
 # 论文推荐 | [中文标题]
 
-北京城市实验室BCL [YYYY年M月D日] [HH:MM]
+[公众号名称] [YYYY年M月D日] [HH:MM]
 
 ---
 
@@ -141,19 +141,7 @@ For each paper, generate a Markdown file following this EXACT template structure
 
 ---
 
-更多内容，请点击微信下方菜单即可查询。
-
-请搜索微信号"Beijingcitylab"关注。
-
-![BCL二维码](bcl_qrcode.jpeg)
-
-Email：BeijingCityLab@gmail.com Emaillist: BCL@freelist.org
-
-新浪微博：北京城市实验室BCL
-
-微信号：beijingcitylab
-
-网址: http://www.beijingcitylab.com
+[用户自定义尾部内容：联系方式、二维码、社交媒体等]
 
 责任编辑：[编辑姓名]
 
@@ -162,9 +150,9 @@ Email：BeijingCityLab@gmail.com Emaillist: BCL@freelist.org
 
 ### Step 6: Copy Fixed Assets
 
-Copy the BCL QR code image to each paper's output folder:
+Copy the QR code image (if available in `<skill_dir>/assets/`) to each paper's output folder:
 ```bash
-cp "<skill_dir>/assets/bcl_qrcode.jpeg" "<output_dir>/<paper_subfolder>/bcl_qrcode.jpeg"
+cp "<skill_dir>/assets/qrcode.jpeg" "<output_dir>/<paper_subfolder>/qrcode.jpeg"
 ```
 
 ### Step 7: Present Results
@@ -186,7 +174,7 @@ After processing all PDFs:
 - 使用当天日期和当前时间（约整到分钟）作为默认发布时间。
 - 论文展示图片目标 4-5 张，优先选择标题页和含图表的页面。
 - 固定尾部内容不要修改，除了"责任编辑"需要填入用户提供的编辑姓名。
-- 责任编辑默认填写"张业成"，用户指定其他人时才修改。
+- 责任编辑需要用户首次使用时提供，之后记住即可。
 
 ## Error Handling
 

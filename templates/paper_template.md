@@ -1,6 +1,6 @@
 # 论文推荐 | {{中文标题}}
 
-北京城市实验室BCL {{日期}} {{时间}}
+{{公众号名称}} {{日期}} {{时间}}
 
 ---
 
@@ -36,19 +36,7 @@
 
 ---
 
-更多内容，请点击微信下方菜单即可查询。
-
-请搜索微信号"Beijingcitylab"关注。
-
-![BCL二维码](bcl_qrcode.jpeg)
-
-Email：BeijingCityLab@gmail.com Emaillist: BCL@freelist.org
-
-新浪微博：北京城市实验室BCL
-
-微信号：beijingcitylab
-
-网址: http://www.beijingcitylab.com
+{{尾部内容}}
 
 责任编辑：{{责任编辑}}
 

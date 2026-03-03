@@ -17,7 +17,7 @@
         │   ├── 推文.md          ← 完整推文内容
         │   ├── page_001.jpg     ← 论文关键页截图
         │   ├── page_004.jpg
-        │   ├── bcl_qrcode.jpeg  ← 公众号二维码
+        │   ├── qrcode.jpeg      ← 公众号二维码
         │   └── metadata.json    ← 提取的元数据
         ├── paper2/
         └── paper3/
@@ -54,24 +54,24 @@
 
 Skill 会自动触发，引导你完成整个流程。
 
-默认工作目录：`F:/BCL/公众号/论文推荐`（可自定义输入输出路径）
+工作目录可自定义，首次使用时 Skill 会询问输入输出路径。
 
 ## 安装
 
 ### 从 Skills CLI
 
 ```bash
-npx skills add 24kchengYe/wechat-article-push
+npx skills add <your-github-username>/wechat-article-push
 ```
 
 ### 手动安装
 
 ```bash
 # macOS / Linux
-git clone https://github.com/24kchengYe/wechat-article-push.git ~/.claude/skills/wechat-article-push
+git clone https://github.com/<your-github-username>/wechat-article-push.git ~/.claude/skills/wechat-article-push
 
 # Windows
-git clone https://github.com/24kchengYe/wechat-article-push.git %USERPROFILE%\.claude\skills\wechat-article-push
+git clone https://github.com/<your-github-username>/wechat-article-push.git %USERPROFILE%\.claude\skills\wechat-article-push
 ```
 
 ### 依赖
@@ -90,8 +90,8 @@ wechat-article-push/
 │   ├── extract_pdf.py    ← PDF 元信息提取 + 关键页面截图
 │   └── lookup_doi.py     ← CrossRef & Semantic Scholar 元数据验证
 ├── assets/
-│   ├── bcl_qrcode.jpeg   ← 公众号二维码
-│   └── bcl_logo.png      ← Logo
+│   ├── qrcode.jpeg       ← 公众号二维码（用户自行替换）
+│   └── logo.png          ← Logo（用户自行替换）
 └── templates/
     └── paper_template.md  ← Markdown 推文模板
 ```
@@ -116,12 +116,17 @@ wechat-article-push/
 
 ## Changelog
 
+### v0.3.0 — 2026-03-03
+
+- **fix**: 脱敏处理，移除所有个人信息和特定组织信息
+- **feat**: 责任编辑改为首次使用时询问，而非硬编码
+- **feat**: 模板尾部信息改为可配置占位符
+
 ### v0.2.0 — 2026-03-03
 
-- **refactor**: 重命名为 `wechat-article-push`，去掉 BCL 前缀
-- **feat**: 更通用的 skill 描述，适用于任意公众号
-- **feat**: 默认责任编辑设为张业成，不再每次询问
-- **feat**: 通讯作者自动标注（`*` 标记）
+- **refactor**: 重命名为 `wechat-article-push`，适用于任意公众号
+- **feat**: 更通用的 skill 描述
+- **feat**: 通讯作者自动标注（`*` 标记），支持 PDF 文本检测 + CrossRef API 双重识别
 
 ### v0.1.0 — 2026-03-03
 
@@ -131,7 +136,6 @@ wechat-article-push/
 - CrossRef & Semantic Scholar 联网验证补全
 - 中文标题翻译 + 导读生成
 - 固定模板 Markdown 输出
-- BCL 二维码等固定资源
 
 ## License
 
