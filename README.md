@@ -1,4 +1,4 @@
-# wechat-article-push — 公众号推送 Skill for Claude Code
+# wechat-office-push — 公众号推送 Skill for Claude Code
 
 > **自动从论文 PDF 生成微信公众号推文，包括中文翻译、元数据提取、关键页面截图、DOI 联网验证。**
 
@@ -61,17 +61,17 @@ Skill 会自动触发，引导你完成整个流程。
 ### 从 Skills CLI
 
 ```bash
-npx skills add <your-github-username>/wechat-article-push
+npx skills add <your-github-username>/wechat-office-push
 ```
 
 ### 手动安装
 
 ```bash
 # macOS / Linux
-git clone https://github.com/<your-github-username>/wechat-article-push.git ~/.claude/skills/wechat-article-push
+git clone https://github.com/<your-github-username>/wechat-office-push.git ~/.claude/skills/wechat-office-push
 
 # Windows
-git clone https://github.com/<your-github-username>/wechat-article-push.git %USERPROFILE%\.claude\skills\wechat-article-push
+git clone https://github.com/<your-github-username>/wechat-office-push.git %USERPROFILE%\.claude\skills\wechat-office-push
 ```
 
 ### 依赖
@@ -83,7 +83,7 @@ pip install PyMuPDF requests
 ## 文件结构
 
 ```
-wechat-article-push/
+wechat-office-push/
 ├── SKILL.md              ← Skill 定义（触发词、工作流、模板）
 ├── README.md
 ├── scripts/
@@ -124,7 +124,7 @@ wechat-article-push/
 
 ### v0.2.0 — 2026-03-03
 
-- **refactor**: 重命名为 `wechat-article-push`，适用于任意公众号
+- **refactor**: 重命名为 `wechat-office-push`，适用于任意公众号
 - **feat**: 更通用的 skill 描述
 - **feat**: 通讯作者自动标注（`*` 标记），支持 PDF 文本检测 + CrossRef API 双重识别
 
