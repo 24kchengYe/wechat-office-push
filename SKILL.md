@@ -64,16 +64,23 @@ python "<skill_dir>/scripts/lookup_doi.py" --title "<paper_title>" [--doi "<doi_
 
 - If DOI was extracted from PDF: pass `--doi` for direct lookup (most accurate)
 - If DOI was not found: pass `--title` to search by title
-- The script returns: `title`, `authors`, `doi`, `doi_url`, `journal`, `year`
+- The script returns: `title`, `authors`, `corresponding_authors`, `doi`, `doi_url`, `journal`, `year`
 
 **Merge logic** — use the online result to fill in or correct PDF-extracted metadata:
 - `authors`: **always prefer online result** (PDF extraction often misses names due to superscripts)
+- `corresponding_authors`: combine sources — CrossRef may identify corresponding authors (via email field), and `extract_pdf.py` extracts from PDF text (e.g., "Corresponding author: Name"). Use all available info.
 - `journal`: **always prefer online result** (PDF extraction often includes trailing noise)
 - `doi`: use online result if PDF extraction missed it
 - `title`: prefer PDF extraction (usually correct), but cross-check with online result
 - `abstract`: keep from PDF extraction (online APIs rarely return abstracts)
 
 If the online lookup also fails for a field, mark it as `[待补充]` and notify the user.
+
+**Corresponding author identification** — determine the corresponding author through:
+1. `corresponding_authors` list from the online lookup (CrossRef marks authors with email)
+2. `corresponding_author` field from `metadata.json` (extracted from PDF text)
+3. If neither source identifies the corresponding author, **visually check the title page image** for `*` markers or "Corresponding author" footnotes
+4. If still unclear, mark as `[通讯作者待确认]` and ask the user
 
 ### Step 4: Generate Chinese Content
 
@@ -84,7 +91,8 @@ Using the verified metadata, Claude should:
    - 流畅自然的中文学术语言
    - 概述论文的研究目的、方法、主要发现
    - 长度约 150-300 字
-3. **Final review**: compare all metadata against the title page image to catch any remaining errors
+3. **Mark corresponding author**: In the author list, add `*` after the corresponding author's name (e.g., `Author1, Author2, Author3*`). Use the corresponding author info gathered in Step 3.
+4. **Final review**: compare all metadata against the title page image to catch any remaining errors, especially verify the corresponding author marking
 
 ### Step 5: Assemble Markdown
 
