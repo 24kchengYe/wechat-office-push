@@ -146,6 +146,30 @@ def extract_title_from_first_page(first_page_text, pdf_meta=None):
     return best_title
 
 
+def extract_corresponding_author(full_text):
+    """Extract corresponding author name from PDF text.
+
+    Looks for patterns like:
+    - "Corresponding author: Name"
+    - "* Corresponding author"
+    - "Email: name@..." near author names
+    - "Correspondence: Name"
+    """
+    patterns = [
+        r'[Cc]orrespond(?:ing|ence)\s*(?:author)?[:\s]+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)',
+        r'\*\s*[Cc]orrespond(?:ing|ence)\s*(?:author)?[:\s]+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)',
+        r'[Cc]orrespond(?:ing|ence)\s*(?:author)?[:\s]*\n\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)',
+        r'(?:E-?mail|Contact)\s*:\s*(\S+@\S+)',  # Capture email for later matching
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, full_text)
+        if match:
+            return match.group(1).strip()
+
+    return None
+
+
 def extract_authors_from_first_page(first_page_text, title=None, pdf_meta=None):
     """Extract authors using PDF metadata first, then text heuristics."""
     # Try PDF metadata first
@@ -356,10 +380,12 @@ def process_pdf(pdf_path, output_dir, max_images=5):
     abstract = extract_abstract(full_text)
     journal = extract_journal(first_page_text, pdf_meta)
     doi = extract_doi_from_text(full_text)
+    corresponding_author = extract_corresponding_author(full_text)
 
     metadata = {
         'title': title,
         'authors': authors,
+        'corresponding_author': corresponding_author,
         'abstract': abstract,
         'journal': journal,
         'doi': doi,
