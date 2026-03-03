@@ -38,7 +38,7 @@ def search_crossref(title, author=None):
         params['query.author'] = author
 
     headers = {
-        'User-Agent': 'BCL-Paper-Push/1.0 (mailto:BeijingCityLab@gmail.com)',
+        'User-Agent': 'WeChat-Article-Push/1.0 (https://github.com/wechat-article-push)',
     }
 
     try:
@@ -71,7 +71,7 @@ def lookup_crossref_by_doi(doi):
     """Look up a specific DOI on CrossRef."""
     url = f"https://api.crossref.org/works/{doi}"
     headers = {
-        'User-Agent': 'BCL-Paper-Push/1.0 (mailto:BeijingCityLab@gmail.com)',
+        'User-Agent': 'WeChat-Article-Push/1.0 (https://github.com/wechat-article-push)',
     }
     try:
         resp = requests.get(url, headers=headers, timeout=15)
