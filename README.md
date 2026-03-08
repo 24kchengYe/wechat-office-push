@@ -1,3 +1,4 @@
+\![Visitors](https://visitor-badge.laobi.icu/badge?page_id=24kchengYe.wechat-office-push)
 # wechat-office-push — 公众号推送 Skill for legacy-agent Code
 
 > **自动从论文 PDF 生成微信公众号推文，包括中文翻译、元数据提取、关键页面截图、DOI 联网验证。**
