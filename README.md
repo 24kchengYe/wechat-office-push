@@ -1,7 +1,7 @@
 ![Visitors](https://visitor-badge.laobi.icu/badge?page_id=24kchengYe.wechat-office-push)
-# wechat-office-push — BCL 公众号推送 Skill for Claude Code
+# wechat-office-push — 公众号推送 Skill for Claude Code
 
-> **为北京城市实验室 (Beijing City Lab) 微信公众号自动生成推送内容，支持论文推荐、征文启事等多种类别。**
+> **为微信公众号自动生成推送内容，支持论文推荐、征文启事等多种类别。**
 
 ## 功能
 
@@ -20,7 +20,7 @@
         │   ├── article.json      ← 结构化推文数据
         │   ├── page_001.jpg      ← 论文关键页截图
         │   ├── page_004.jpg
-        │   ├── bcl_qrcode.jpeg   ← BCL 公众号二维码
+        │   ├── qrcode.jpeg       ← 公众号二维码
         │   └── metadata.json     ← 提取的元数据
         ├── paper2/
         └── paper3/
@@ -36,8 +36,8 @@
 输出: output/[专刊简称]/
         ├── article.json      ← 结构化推文数据（含双语内容）
         ├── article.md        ← 排版好的推文 Markdown
-        ├── bcl_qrcode.jpeg   ← BCL 公众号二维码
-        └── bcl_logo.png      ← BCL Logo
+        ├── qrcode.jpeg       ← 公众号二维码
+        └── logo.png          ← 公众号 Logo
 ```
 
 ### 自动化流程
@@ -81,15 +81,15 @@
 论文推荐，pdf在桌面上
 
 # 征文启事
-BCL征文启事，链接是 https://journals.sagepub.com/page/tus/calls-for-papers
-帮BCL推一个CFP https://xxx.com/call-for-papers
+征文启事，链接是 https://journals.sagepub.com/page/tus/calls-for-papers
+帮我推一个CFP https://xxx.com/call-for-papers
 征文推送，这个期刊在征稿 [URL]
 ```
 
 ### 默认路径
 
-- 论文推荐：`F:/BCL/公众号/自动化推送/论文推荐`
-- 征文启事：`F:/BCL/公众号/自动化推送/征文启事`
+- 论文推荐：用户指定路径或当前工作目录
+- 征文启事：用户指定路径或当前工作目录
 
 ## 安装
 
@@ -125,8 +125,8 @@ wechat-office-push/
 │   ├── extract_pdf.py    ← PDF 元信息提取 + 关键页面截图
 │   └── lookup_doi.py     ← CrossRef & Semantic Scholar 元数据验证
 ├── assets/
-│   ├── bcl_qrcode.jpeg   ← BCL 公众号二维码
-│   └── bcl_logo.png      ← BCL Logo
+│   ├── qrcode.jpeg       ← 公众号二维码
+│   └── logo.png          ← 公众号 Logo
 └── templates/
     └── paper_template.md  ← Markdown 推文模板
 ```
@@ -143,7 +143,7 @@ wechat-office-push/
   "论文相关": { "题目_en": "...", "题目_cn": "...", "作者": "...", "发表刊物": "...", "DOI": "..." },
   "摘要": "...",
   "论文展示": ["page_001.jpg", "..."],
-  "footer": { "责任编辑": "张业成", "阅读原文": "..." }
+  "footer": { "责任编辑": "[编辑姓名]", "阅读原文": "..." }
 }
 ```
 
@@ -161,7 +161,7 @@ wechat-office-push/
     { "heading": "Timeline(时间表)", "content_en": "...", "content_cn": "..." },
     { "heading": "Guest editors(客座编辑)", "editors": [{ "name": "...", "affiliation": "...", "email": "..." }] }
   ],
-  "footer": { "责任编辑": "张业成", "contact": { "email": "...", "微信号": "..." } }
+  "footer": { "责任编辑": "[编辑姓名]", "contact": "[用户自定义联系方式]" }
 }
 ```
 
@@ -178,11 +178,11 @@ wechat-office-push/
 
 - **feat**: 新增征文启事 (Call for Papers) 工作流
 - **feat**: 输出格式改为 JSON (`article.json`) + Markdown (`article.md`)
-- **feat**: 合并 bcl-paper-push 技能，统一为单一技能
-- **feat**: 默认路径改为 `F:/BCL/公众号/自动化推送/`
-- **feat**: 责任编辑默认"张业成"
+- **feat**: 合并旧版推送技能，统一为单一技能
+- **feat**: 默认路径改为用户指定路径或当前工作目录
+- **feat**: 责任编辑改为首次使用时询问用户
 - **feat**: 征文启事支持双语内容（英文原文 + 中文翻译）
-- **feat**: 完整 BCL 联系信息块（邮箱、微博、微信号、网址）
+- **feat**: 联系信息块改为可配置占位符
 
 ### v0.3.0 — 2026-03-03
 
