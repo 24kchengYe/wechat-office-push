@@ -1,11 +1,11 @@
 ---
 name: wechat-office-push
-description: "Generate WeChat public account (公众号) articles for 北京城市实验室 (Beijing City Lab / BCL). Supports multiple content types: 论文推荐 (paper recommendation), 征文启事 (call for papers), and more. Use this skill whenever the user mentions: BCL论文推荐, BCL推送, BCL论文推送, BCL paper push, 北京城市实验室推送, 帮我推BCL论文, BCL公众号, 做BCL推送, BCL征文启事, call for papers, CFP推送, 征文推送, BCL WeChat article, 推送论文到BCL, BCL paper recommendation, 帮BCL写推文, 论文推荐, 征文启事, 公众号推送, 写推送, 推文, 公众号文章, WeChat article, 推送论文, 做一个推送, 帮我推论文, 论文推送, 生成推文, 会议推荐, MOOC推送, 教研动态, or any task related to creating content for a WeChat public account."
+description: "Generate WeChat public account (公众号) articles from academic PDFs and call-for-papers pages. Supports multiple content types: 论文推荐 (paper recommendation), 征文启事 (call for papers), and more. Use this skill whenever the user mentions: call for papers, CFP推送, 征文推送, 论文推荐, 征文启事, 公众号推送, 写推送, 推文, 公众号文章, WeChat article, 推送论文, 做一个推送, 帮我推论文, 论文推送, 生成推文, 会议推荐, MOOC推送, 教研动态, or any task related to creating content for a WeChat public account."
 ---
 
-# BCL 公众号推送 Skill
+# 公众号推送 Skill
 
-为北京城市实验室 (Beijing City Lab) 微信公众号生成推送内容。
+为微信公众号自动生成推送内容（论文推荐、征文启事等）。
 
 ## Supported Categories
 
@@ -23,8 +23,8 @@ description: "Generate WeChat public account (公众号) articles for 北京城�
   - `extract_pdf.py` -- Extracts text, metadata, and key page images from academic paper PDFs
   - `lookup_doi.py` -- Looks up DOI metadata via CrossRef and Semantic Scholar APIs
 - **Assets directory**: `~/.legacy-agent/skills/wechat-office-push/assets/`
-  - `bcl_qrcode.jpeg` -- BCL WeChat QR code (used in article footer)
-  - `bcl_logo.png` -- BCL logo
+  - `qrcode.jpeg` -- WeChat QR code (used in article footer)
+  - `logo.png` -- Account logo
 
 ## Dependencies
 
@@ -35,13 +35,13 @@ pip install PyMuPDF requests
 
 ## Default Paths
 
-- **论文推荐默认目录**: `F:/BCL/公众号/自动化推送/论文推荐`
-- **征文启事默认目录**: `F:/BCL/公众号/自动化推送/征文启事`
+- **论文推荐默认目录**: 用户指定或当前工作目录
+- **征文启事默认目录**: 用户指定或当前工作目录
 - 论文推荐 Input: PDF files in the working directory (or user-specified path)
 - 征文启事 Input: 用户提供的官网链接 (URL)
 - Output: **JSON 文件** (`article.json`) + images in subfolders
 
-**责任编辑**: 默认"[责任编辑待配置]"。用户可在运行时覆盖。
+**责任编辑**: 首次使用时询问用户，后续复用。
 
 ---
 
@@ -49,7 +49,7 @@ pip install PyMuPDF requests
 
 ### Step 1: Determine Input
 
-1. **Input path**: Folder containing paper PDFs (default: `F:/BCL/公众号/自动化推送/论文推荐`)
+1. **Input path**: Folder containing paper PDFs (user-specified or current working directory)
 2. **Output path**: Where to save results (default: same as input, with subfolders per paper)
 
 ### Step 2: Extract PDF Content
@@ -107,7 +107,7 @@ Generate a JSON file `article.json` in the paper's output folder, following this
 {
   "type": "论文推荐",
   "title": "论文推荐 | [中文标题]",
-  "account": "北京城市实验室",
+  "account": "[公众号名称]",
   "date": "YYYY年M月D日",
   "time": "HH:MM",
   "导读": "本期为大家推荐的内容为论文《[English Title]》（[中文标题]），发表在 [Journal Name] 期刊，欢迎大家学习与交流。[中文导读段落]",
@@ -121,8 +121,8 @@ Generate a JSON file `article.json` in the paper's output folder, following this
   "摘要": "[Full English Abstract]",
   "论文展示": ["page_001.jpg", "page_002.jpg", "page_003.jpg"],
   "footer": {
-    "qrcode": "bcl_qrcode.jpeg",
-    "责任编辑": "[责任编辑待配置]",
+    "qrcode": "qrcode.jpeg",
+    "责任编辑": "[编辑姓名]",
     "阅读原文": "https://doi.org/xx.xxxx/xxxxx"
   }
 }
@@ -131,8 +131,8 @@ Generate a JSON file `article.json` in the paper's output folder, following this
 ### Step 6: Copy Fixed Assets
 
 ```bash
-cp "~/.legacy-agent/skills/wechat-office-push/assets/bcl_qrcode.jpeg" "<output_dir>/<paper_subfolder>/bcl_qrcode.jpeg"
-cp "~/.legacy-agent/skills/wechat-office-push/assets/bcl_logo.png" "<output_dir>/<paper_subfolder>/bcl_logo.png"
+cp "~/.legacy-agent/skills/wechat-office-push/assets/qrcode.jpeg" "<output_dir>/<paper_subfolder>/qrcode.jpeg"
+cp "~/.legacy-agent/skills/wechat-office-push/assets/logo.png" "<output_dir>/<paper_subfolder>/logo.png"
 ```
 
 ### Step 7: Present Results
@@ -152,8 +152,8 @@ After processing all PDFs:
 当用户提到"征文"、"call for papers"、"CFP"时走此流程。
 
 - **输入**: 用户提供的官网链接（期刊/会议征文页面 URL）
-- **输出**: JSON 文件 + 相关图片，保存到 `F:/BCL/公众号/自动化推送/征文启事/[专刊简称]/`
-- **责任编辑**: 默认"[责任编辑待配置]"，用户可覆盖
+- **输出**: JSON 文件 + 相关图片，保存到 `[用户指定路径]/征文启事/[专刊简称]/`
+- **责任编辑**: 首次使用时询问用户，后续复用
 
 ### CFP Step 1: 获取征文信息
 
@@ -188,7 +188,7 @@ After processing all PDFs:
   "type": "征文启事",
   "title": "征文启事 | [期刊简称]专刊《[专刊中文名称]》等你来",
   "subtitle": "Call for papers",
-  "account": "北京城市实验室",
+  "account": "[公众号名称]",
   "date": "YYYY年M月D日",
   "time": "HH:MM",
   "导读": "本期为大家推介的是期刊《[期刊中文名]》（[期刊英文名]）专刊《[专刊中文名]》（[专刊英文名]）的征文启事，包含Rationale（选题依据）、The scope of Topics（主题范围）、Guidelines（投稿指南）、Timeline（时间表）等内容。欢迎您的咨询、建议与投稿！",
@@ -233,15 +233,9 @@ After processing all PDFs:
     "投稿系统": "[submission system URL]"
   },
   "footer": {
-    "qrcode": "bcl_qrcode.jpeg",
-    "责任编辑": "[责任编辑待配置]",
-    "contact": {
-      "email": "BeijingCityLab@gmail.com",
-      "emaillist": "BCL@freelist.org",
-      "微博": "北京城市实验室BCL",
-      "微信号": "beijingcitylab",
-      "网址": "http://www.beijingcitylab.org"
-    }
+    "qrcode": "qrcode.jpeg",
+    "责任编辑": "[编辑姓名]",
+    "contact": "[用户自定义联系方式]"
   }
 }
 ```
@@ -251,8 +245,8 @@ After processing all PDFs:
 ### CFP Step 4: 复制固定资源
 
 ```bash
-cp "~/.legacy-agent/skills/wechat-office-push/assets/bcl_qrcode.jpeg" "<output_dir>/bcl_qrcode.jpeg"
-cp "~/.legacy-agent/skills/wechat-office-push/assets/bcl_logo.png" "<output_dir>/bcl_logo.png"
+cp "~/.legacy-agent/skills/wechat-office-push/assets/qrcode.jpeg" "<output_dir>/qrcode.jpeg"
+cp "~/.legacy-agent/skills/wechat-office-push/assets/logo.png" "<output_dir>/logo.png"
 ```
 
 ### CFP Step 5: 展示结果
@@ -268,14 +262,14 @@ cp "~/.legacy-agent/skills/wechat-office-push/assets/bcl_logo.png" "<output_dir>
 - 导读固定格式："本期为大家推介的是期刊《期刊中文名》（期刊英文名）专刊《专刊中文名》（专刊英文名）的征文启事，包含Rationale（选题依据）、The scope of Topics（主题范围）、Guidelines（投稿指南）、Timeline（时间表）等内容。欢迎您的咨询、建议与投稿！"
 - 章节正文：英文原文在前，中文翻译紧跟其后
 - Guest editors 列出完整信息（姓名、单位、邮箱）
-- footer 包含完整 BCL 联系信息
+- footer 包含公众号联系信息（由用户配置）
 - "阅读原文"链接指向期刊主页（不是 DOI）
 
 ---
 
 ## Important Notes
 
-- 公众号名称固定为"北京城市实验室"
+- 公众号名称由用户配置，首次使用时询问，后续复用
 - 论文推荐导读固定开头："本期为大家推荐的内容为论文《...》（...），发表在 ... 期刊，欢迎大家学习与交流。" 不要改动此格式
 - "题 目" 中间有一个全角空格，保持原样
 - "摘 要" 中间也有全角空格，保持原样
@@ -284,7 +278,7 @@ cp "~/.legacy-agent/skills/wechat-office-push/assets/bcl_logo.png" "<output_dir>
 - 日期格式为：YYYY年M月D日（如 2025年3月12日），时间格式为 HH:MM
 - 使用当天日期和当前时间（约整到分钟）作为默认发布时间
 - 论文展示图片目标 4-5 张，优先选择标题页和含图表的页面
-- 责任编辑默认"[责任编辑待配置]"，用户可覆盖
+- 责任编辑首次使用时询问用户，后续复用
 
 ## Error Handling
 
@@ -296,19 +290,19 @@ cp "~/.legacy-agent/skills/wechat-office-push/assets/bcl_logo.png" "<output_dir>
 
 ## Example Usage
 
-User: "帮BCL推一篇论文"
---> 论文推荐流程, use default path `F:/BCL/公众号/自动化推送/论文推荐`, process PDFs
+User: "帮我推一篇论文"
+--> 论文推荐流程, ask user for input path or use current working directory, process PDFs
 
-User: "BCL论文推荐，pdf在桌面上"
+User: "论文推荐，pdf在桌面上"
 --> Use Desktop path, find PDFs, process and generate
 
-User: "推送 F:/papers/xxx.pdf 到BCL公众号"
+User: "推送 F:/papers/xxx.pdf 到公众号"
 --> Use specified path, process the PDF, generate output
 
-User: "BCL征文启事，链接是 https://www.journals.elsevier.com/xxx"
+User: "征文启事，链接是 https://www.journals.elsevier.com/xxx"
 --> 征文启事流程, 访问链接，提取征文信息，生成双语 JSON
 
-User: "帮BCL推一个CFP https://xxx.com/call-for-papers"
+User: "帮我推一个CFP https://xxx.com/call-for-papers"
 --> 同上
 
 User: "征文推送，这个期刊在征稿 [URL]"
