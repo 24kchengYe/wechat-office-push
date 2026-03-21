@@ -211,7 +211,7 @@ MIT
 
 ---
 
-[![Star History Chart](https://api.star-history.com/svg?repos=24kchengYe/wechat-office-push&type=Date)](https://star-history.com/#24kchengYe/wechat-office-push&Date)
+[![Star History](https://starchart.cc/24kchengYe/wechat-office-push.svg)](https://starchart.cc/24kchengYe/wechat-office-push)
 
 ---
 
