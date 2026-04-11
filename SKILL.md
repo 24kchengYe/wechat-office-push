@@ -5,7 +5,7 @@ description: "Generate WeChat public account (公众号) articles from academic 
 
 # 公众号推送 Skill
 
-为微信公众号自动生成推送内容（论文推荐、征文启事等）。
+为微信公众号自动生成推送内容（论文推荐、征文启事等）。每篇推送同时产出三种格式：`推文.md`（阅读/版本控制）、`推文.txt`（直接复制粘贴到公众号编辑器）、`article.json`（结构化数据，方便后续自动化）。
 
 ## Supported Categories
 
@@ -15,133 +15,174 @@ description: "Generate WeChat public account (公众号) articles from academic 
 4. MOOC慕课推送 *(planned)*
 5. 教研动态 *(planned)*
 
-根据用户意图自动选择对应工作流。如果用户提到"征文"、"call for papers"、"CFP"，走征文启事流程；否则默认走论文推荐流程。
+如果用户提到"征文"、"call for papers"、"CFP"，走征文启事流程；否则默认走论文推荐流程。
 
 ## Scripts & Assets
 
-- **Scripts directory**: `~/.legacy-agent/skills/wechat-office-push/scripts/`
-  - `extract_pdf.py` -- Extracts text, metadata, and key page images from academic paper PDFs
-  - `lookup_doi.py` -- Looks up DOI metadata via CrossRef and Semantic Scholar APIs
-- **Assets directory**: `~/.legacy-agent/skills/wechat-office-push/assets/`
-  - `qrcode.jpeg` -- WeChat QR code (used in article footer)
-  - `logo.png` -- Account logo
+- **Scripts**: `~/.legacy-agent/skills/wechat-office-push/scripts/`
+  - `extract_pdf.py` — 从 PDF 提取元数据、摘要和关键页图片
+  - `lookup_doi.py` — 通过 CrossRef / Semantic Scholar 验证并补全 DOI 元数据
+  - `download_sage_pdf.py` — 通过 sage.cnpereading.com 镜像站按 DOI 下载 SAGE 期刊 PDF（SAGE 官站 403 付费墙时使用）
+- **Templates**: `~/.legacy-agent/skills/wechat-office-push/templates/`
+  - `paper_template.md` / `paper_template.txt` / `paper_template.json` — 论文推荐三种输出模板
+- **Profiles**: `~/.legacy-agent/skills/wechat-office-push/profiles/`
+  - `bcl.json` — 北京城市实验室BCL 账号配置（公众号名/责任编辑/尾部信息/二维码等）
+  - 新建其它账号时追加 `<profile_id>.json`
+- **Assets**: `~/.legacy-agent/skills/wechat-office-push/assets/`
+  - `qrcode.jpeg` — 默认二维码（BCL 复制到输出目录时重命名为 `bcl_qrcode.jpeg`）
+  - `logo.png` — 账号 logo
 
 ## Dependencies
 
-Before first use, ensure dependencies are installed:
 ```bash
 pip install PyMuPDF requests
 ```
 
-## Default Paths
+## Profile 机制
 
-- **论文推荐默认目录**: 用户指定或当前工作目录
-- **征文启事默认目录**: 用户指定或当前工作目录
-- 论文推荐 Input: PDF files in the working directory (or user-specified path)
-- 征文启事 Input: 用户提供的官网链接 (URL)
-- Output: **JSON 文件** (`article.json`) + images in subfolders
+首次使用时，检查用户是否使用已知 profile（如 BCL）。若是，从 `profiles/<id>.json` 直接读取：
+- `account_name` — 公众号名称
+- `default_editor` — 默认责任编辑
+- `qrcode_filename` — 二维码在输出目录中的文件名
+- `footer_text` — 固定尾部文本（逐行数组）
+- `contact` — 邮箱/微博/微信号/网址
+- `default_working_dir` — 默认工作目录
 
-**责任编辑**: 首次使用时询问用户，后续复用。
+**BCL 默认值**：
+- 公众号名称：北京城市实验室BCL
+- 责任编辑：[责任编辑待配置]
+- 工作目录：`<work_dir>`
+- QR 文件：`bcl_qrcode.jpeg`
+
+若用户使用新账号，询问一次后保存为新的 profile。
 
 ---
 
 ## Workflow 1: 论文推荐 (Paper Recommendation)
 
-### Step 1: Determine Input
+### Step 0: 去重检查（新增，重要）
 
-1. **Input path**: Folder containing paper PDFs (user-specified or current working directory)
-2. **Output path**: Where to save results (default: same as input, with subfolders per paper)
+**在开始处理 PDF 之前**，若用户的推送任务来自某期刊的 Online First / Current Issue 等列表源（如"TUS 期刊最新一期"），**必须先做去重**：
 
-### Step 2: Extract PDF Content
+1. 询问用户草稿箱中已有哪些相关推送（截图或标题列表）
+2. WebFetch 获取期刊最新列表，整理英文标题 + DOI
+3. 做映射表：列表论文 vs 已推送，明确标记"🆕 未推送"和"✅ 已推送"
+4. 只对"🆕 未推送"的论文继续后续流程
+5. 展示候选清单让用户确认后再下载 PDF
 
-For each `.pdf` file found in the input folder, run:
+这一步防止重复劳动和重复推送。
+
+### Step 1: 确定输入
+
+1. **输入路径**: 包含 PDF 的文件夹（用户指定或当前工作目录）
+2. **输出路径**: 默认 `<输入目录上一级>/output/<paper_slug>/`，每篇一个子文件夹
+
+### Step 1.5: 若 PDF 需自动下载（SAGE 期刊）
+
+用户若只给了 DOI 列表或期刊页面，未提供 PDF：
+- SAGE 官方 PDF (journals.sagepub.com) 常见 403（付费墙）
+- **改用 sage.cnpereading.com 镜像**：`https://sage.cnpereading.com/paragraph/download/?doi=<DOI>`
+- 使用内置脚本：
+  ```bash
+  python "~/.legacy-agent/skills/wechat-office-push/scripts/download_sage_pdf.py" <doi> --out <target_dir> --name <filename.pdf>
+  ```
+- 脚本会验证 PDF 魔数（`%PDF-`）确保下载到的是真 PDF
+- 批量下载用 `--doi-list dois.txt`
+
+### Step 2: 提取 PDF 内容
+
+对每个 `.pdf` 文件运行：
 
 ```bash
 python "~/.legacy-agent/skills/wechat-office-push/scripts/extract_pdf.py" "<pdf_path>" "<output_dir>/<paper_subfolder>" --max-images 5
 ```
 
-This extracts:
-- Metadata: title, authors, abstract, journal, DOI
-- 4-5 key page images (title page + figure/table pages) rendered as JPG
-- Saves `metadata.json` with all extracted info
+提取内容：metadata、4-5 张关键页图片（标题页 + 图表页）、`metadata.json`。
 
-### Step 3: Online DOI Verification & Completion
+### Step 3: 在线 DOI 验证与补全
 
-**ALWAYS run this step** for every paper to verify and complete metadata.
+**必须对每篇执行**：
 
 ```bash
-python "~/.legacy-agent/skills/wechat-office-push/scripts/lookup_doi.py" --title "<paper_title>" [--doi "<doi_if_found>"] [--author "<first_author>"]
+python "~/.legacy-agent/skills/wechat-office-push/scripts/lookup_doi.py" --doi "<doi>"
+# 或按标题查：--title "<paper_title>"
 ```
 
-**Merge logic** -- use online results to fill in or correct PDF-extracted metadata:
-- `authors`: **always prefer online result** (PDF extraction often misses names due to superscripts)
-- `corresponding_authors`: combine sources -- CrossRef may identify corresponding authors via email, and `extract_pdf.py` extracts from PDF text
-- `journal`: **always prefer online result** (PDF extraction often includes trailing noise)
-- `doi`: use online result if PDF extraction missed it
-- `title`: prefer PDF extraction, but cross-check with online result
-- `abstract`: keep from PDF extraction (online APIs rarely return abstracts)
+**合并规则**（extract_pdf.py 对作者和 title 提取常有缺陷，必须用 lookup_doi 覆盖）：
+- `title` — **总是优先用 lookup_doi 返回的完整标题**（PDF 抽取常被换行截断或掺入附属文本）
+- `authors` — **总是优先用 lookup_doi**（PDF 抽取常因上标/仿宋字体缺失姓名）
+- `journal` — **总是优先用 lookup_doi**（PDF 抽取常带结尾杂质）
+- `doi` — lookup_doi 补全缺失
+- `abstract` — 保留 PDF 提取的（CrossRef 很少返回摘要）
+- `year` — 用 lookup_doi 返回的发表年份
 
-If a field cannot be resolved, mark it as `[待补充]` and notify the user.
+### Step 3.5: 旧文首发年份提醒（新增）
 
-**Corresponding author identification** -- determine through:
-1. `corresponding_authors` from online lookup
-2. `corresponding_author` from `metadata.json`
-3. Visual check of title page image for `*` markers or "Corresponding author" footnotes
-4. If still unclear, mark as `[通讯作者待确认]` and ask the user
+若 `lookup_doi` 返回的 `year` 与当前年份相差 ≥ 2 年，但论文却出现在当前 Online First 列表：
+- 在 `article.json` 的 `论文相关.备注` 字段写明："首次在线发表于 YYYY 年，当前重新列入 Online First"
+- 提醒用户决定是否在导读里加一句说明
 
-### Step 4: Generate Chinese Content
+### Step 4: 通讯作者识别（必须视觉验证）
 
-1. **Translate the title** to Chinese (学术翻译风格，准确专业)
-2. **Write the 导读**: Chinese summary based on the English abstract
+按以下顺序：
+1. `lookup_doi.py` 返回的 `corresponding_authors`
+2. `extract_pdf.py` 的 `corresponding_author` 字段
+3. **视觉检查标题页图片** (`page_001.jpg`) 的 `Corresponding author:` 段落 — **这一步是强制的**，CrossRef 常不返回通讯作者
+4. 如仍无法确定，标为 `[通讯作者待确认]` 并询问用户
+
+确定后在作者列表中该姓名后加 `*` 标记。
+
+### Step 5: 生成中文内容
+
+1. **翻译英文标题为中文学术名**（准确专业，不过度意译）
+2. **撰写中文导读**（基于英文摘要）：
    - 流畅自然的中文学术语言
-   - 概述研究目的、方法、主要发现
+   - 概述研究背景/方法/主要发现
    - 约 150-300 字
-3. **Mark corresponding author**: Add `*` after the corresponding author's name in the author list
-4. **Final review**: compare all metadata against the title page image
+3. **最终视觉核对**：把标题、作者、通讯作者、DOI 与 `page_001.jpg` 逐字段对比
 
-### Step 5: Assemble JSON
+### Step 6: 生成三种格式输出文件
 
-Generate a JSON file `article.json` in the paper's output folder, following this structure:
+对每篇论文在 `output/<paper_slug>/` 下同时生成：
 
-```json
-{
-  "type": "论文推荐",
-  "title": "论文推荐 | [中文标题]",
-  "account": "[公众号名称]",
-  "date": "YYYY年M月D日",
-  "time": "HH:MM",
-  "导读": "本期为大家推荐的内容为论文《[English Title]》（[中文标题]），发表在 [Journal Name] 期刊，欢迎大家学习与交流。[中文导读段落]",
-  "论文相关": {
-    "题目_en": "[English Title]",
-    "题目_cn": "[中文标题]",
-    "作者": "[Author1, Author2, Author3*]",
-    "发表刊物": "[Journal Name]",
-    "DOI": "https://doi.org/xx.xxxx/xxxxx"
-  },
-  "摘要": "[Full English Abstract]",
-  "论文展示": ["page_001.jpg", "page_002.jpg", "page_003.jpg"],
-  "footer": {
-    "qrcode": "qrcode.jpeg",
-    "责任编辑": "[编辑姓名]",
-    "阅读原文": "https://doi.org/xx.xxxx/xxxxx"
-  }
-}
-```
+#### 6a. `推文.md`（markdown 版，便于 git diff 和阅读）
 
-### Step 6: Copy Fixed Assets
+按 `templates/paper_template.md` 填充。
+
+#### 6b. `推文.txt`（纯文本版，用于复制粘贴到公众号编辑器）
+
+按 `templates/paper_template.txt` 填充。关键约定：
+- 零 markdown 语法
+- 用 `━━━` 全角粗线分节（用户可在编辑器中保留或删除）
+- 段落名用 `【导读】`、`【论文相关】`、`【摘 要 ABSTRACT】`、`【论文展示（部分）】` 等中文方括号
+- 图片位置用 `【配图：page_001.jpg】` 占位（编辑器中手动替换为实际图片）
+- "题 目 ："、"摘 要 ABSTRACT" 中间的全角空格严格保持
+- 尾部固定信息从 profile 的 `footer_text` 数组逐行注入
+
+#### 6c. `article.json`（结构化数据，给未来自动化上传/索引脚本使用）
+
+按 `templates/paper_template.json` 填充。关键字段：
+- 顶层：`type` / `title_cn` / `title_en` / `headline` / `account` / `date` / `time` / `导读`
+- `论文相关`：`题目_cn` / `题目_en` / `作者`（含 `*`）/ `作者列表`（数组）/ `通讯作者` / `通讯作者邮箱` / `通讯作者单位` / `DOI` / `DOI链接` / `发表年份` / `备注`（可选）
+- `摘要`：英文原文
+- `论文展示`：图片文件名数组
+- `footer`：从 profile 注入（`qrcode` / `account_intro` / `email` / `weibo` / `wechat_id` / `website` / `责任编辑` / `阅读原文`）
+
+### Step 7: 复制固定资源
 
 ```bash
-cp "~/.legacy-agent/skills/wechat-office-push/assets/qrcode.jpeg" "<output_dir>/<paper_subfolder>/qrcode.jpeg"
-cp "~/.legacy-agent/skills/wechat-office-push/assets/logo.png" "<output_dir>/<paper_subfolder>/logo.png"
+cp "~/.legacy-agent/skills/wechat-office-push/assets/qrcode.jpeg" \
+   "<output_dir>/<paper_subfolder>/<profile.qrcode_filename>"
 ```
 
-### Step 7: Present Results
+注意使用 profile 中的 `qrcode_filename`（BCL 是 `bcl_qrcode.jpeg`，不是默认的 `qrcode.jpeg`）。
 
-After processing all PDFs:
-1. Show a summary table: title, authors, journal, DOI for each paper
-2. Show the generated JSON content for user review
-3. Ask if any content needs adjustment (title translation, 导读, etc.)
-4. Confirm output files are saved
+### Step 8: 展示结果
+
+1. 汇总表：title / authors / 通讯作者 / journal / DOI
+2. 列出每个 output 子文件夹的文件清单（确认三种格式都在）
+3. 询问是否需要调整翻译、导读、时间戳等
+4. 确认后结束
 
 ---
 
@@ -152,36 +193,33 @@ After processing all PDFs:
 当用户提到"征文"、"call for papers"、"CFP"时走此流程。
 
 - **输入**: 用户提供的官网链接（期刊/会议征文页面 URL）
-- **输出**: JSON 文件 + 相关图片，保存到 `[用户指定路径]/征文启事/[专刊简称]/`
-- **责任编辑**: 首次使用时询问用户，后续复用
+- **输出**: `<工作目录>/征文启事/<专刊简称>/` 下同时生成 `推文.md` / `推文.txt` / `article.json` + 可选图片
+- **Profile**: 同论文推荐流程，从 `profiles/<id>.json` 读取
 
 ### CFP Step 1: 获取征文信息
 
-使用 WebFetch 或浏览器工具访问用户提供的 URL，提取以下关键信息：
+使用 WebFetch 访问用户提供的 URL，提取：
+- 专刊/会议名称（英文 + 中文翻译）
+- 期刊名称
+- Rationale（选题依据）
+- Scope of Topics（主题范围）
+- Guidelines（投稿指南）
+- Timeline（时间表）
+- Guest Editors（客座编辑，含姓名/单位/邮箱）
+- 相关链接（投稿入口、期刊主页）
 
-- **专刊/会议名称** (英文 + 中文翻译)
-- **期刊名称** (Journal Name)
-- **选题依据 / Rationale** — 为什么这个专刊重要
-- **主题范围 / Scope of Topics** — 征文涵盖哪些方向
-- **投稿指南 / Guidelines** — 稿件要求（字数、格式、投稿方式等）
-- **时间表 / Timeline** — 截稿日期、审稿周期、出版日期等
-- **客座编辑 / Guest Editors** — 姓名、单位、邮箱
-- **相关链接** — 投稿入口、期刊主页等
-
-如果页面信息不完整，标记为 `[待补充]` 并提示用户。
+缺失字段标 `[待补充]`。
 
 ### CFP Step 2: 生成双语内容
 
-将英文征文信息翻译为中文，保持学术准确性：
+1. 专刊名称翻译
+2. 各章节双语呈现（英文原文在前，中文翻译紧跟）
+3. 翻译风格：学术正式，术语准确
+4. 导读段落：150-250 字
 
-1. **专刊名称翻译**: 简洁专业的中文标题
-2. **各章节双语呈现**: 每段先英文原文，后中文翻译
-3. **翻译风格**: 学术正式，术语准确，不过度意译
-4. **导读段落**: 用中文概述这个征文启事的重要性、主题、截稿日期等关键信息（150-250字）
+### CFP Step 3: 生成三种格式输出
 
-### CFP Step 3: 组装 JSON
-
-生成 `article.json` 文件，结构如下：
+同样产出 `推文.md` / `推文.txt` / `article.json`。JSON 结构：
 
 ```json
 {
@@ -195,18 +233,18 @@ After processing all PDFs:
   "sections": [
     {
       "heading": "Rationale(选题依据)",
-      "content_en": "[英文 Rationale 原文]",
-      "content_cn": "[中文翻译]"
+      "content_en": "...",
+      "content_cn": "..."
     },
     {
       "heading": "The scope of Topics（主题范围）",
-      "content_en": "[英文 Scope 说明 + topic 列表]",
-      "content_cn": "[中文翻译]",
-      "topics": ["topic1", "topic2", "..."]
+      "content_en": "...",
+      "content_cn": "...",
+      "topics": ["topic1", "topic2"]
     },
     {
       "heading": "Guidelines(投稿指南)",
-      "content_en": "[英文 Guidelines 原文，含投稿链接]",
+      "content_en": "...",
       "content_cn": "请依据网站要求提交完整论文，并在cover letter中注明向专刊《[专刊中文名]》投稿。"
     },
     {
@@ -219,91 +257,67 @@ After processing all PDFs:
       "intro_en": "You are also encouraged to contact the guest editors to discuss the issues related to the submission:",
       "intro_cn": "如有任何投稿相关问题，欢迎联系本特刊客座编辑进行咨询：",
       "editors": [
-        {
-          "name": "[Name]",
-          "email": "[email]",
-          "affiliation": "[University/Institute, Country]"
-        }
+        { "name": "...", "email": "...", "affiliation": "..." }
       ]
     }
   ],
   "links": {
-    "专刊链接": "[CFP page URL]",
-    "期刊主页链接": "[journal homepage URL]",
-    "投稿系统": "[submission system URL]"
+    "专刊链接": "...",
+    "期刊主页链接": "...",
+    "投稿系统": "..."
   },
-  "footer": {
-    "qrcode": "qrcode.jpeg",
-    "责任编辑": "[编辑姓名]",
-    "contact": "[用户自定义联系方式]"
-  }
+  "footer": { "qrcode": "...", "责任编辑": "...", "contact": "..." }
 }
 ```
 
-**章节标题格式说明**: heading 字段用 `[ heading ]` 方括号包裹输出，英文名后跟中文括号。如 `[ Rationale(选题依据) ]`。
+### CFP Step 4: 复制资源 + 展示结果
 
-### CFP Step 4: 复制固定资源
-
-```bash
-cp "~/.legacy-agent/skills/wechat-office-push/assets/qrcode.jpeg" "<output_dir>/qrcode.jpeg"
-cp "~/.legacy-agent/skills/wechat-office-push/assets/logo.png" "<output_dir>/logo.png"
-```
-
-### CFP Step 5: 展示结果
-
-1. 展示生成的完整 JSON 内容
-2. 检查是否有 `[待补充]` 字段，提醒用户
-3. 询问是否需要调整翻译、导读或其他内容
-4. 确认文件已保存
+同论文推荐流程。
 
 ### 征文启事格式说明
 
 - 标题格式固定为 "征文启事 | [期刊简称]专刊《[中文名称]》等你来"
-- 导读固定格式："本期为大家推介的是期刊《期刊中文名》（期刊英文名）专刊《专刊中文名》（专刊英文名）的征文启事，包含Rationale（选题依据）、The scope of Topics（主题范围）、Guidelines（投稿指南）、Timeline（时间表）等内容。欢迎您的咨询、建议与投稿！"
-- 章节正文：英文原文在前，中文翻译紧跟其后
-- Guest editors 列出完整信息（姓名、单位、邮箱）
-- footer 包含公众号联系信息（由用户配置）
-- "阅读原文"链接指向期刊主页（不是 DOI）
+- 导读固定开头："本期为大家推介的是期刊《..."
+- 章节正文：英文原文在前，中文翻译紧跟
+- Guest editors 列完整信息
+- "阅读原文"指向期刊主页（不是 DOI）
 
 ---
 
 ## Important Notes
 
-- 公众号名称由用户配置，首次使用时询问，后续复用
-- 论文推荐导读固定开头："本期为大家推荐的内容为论文《...》（...），发表在 ... 期刊，欢迎大家学习与交流。" 不要改动此格式
-- "题 目" 中间有一个全角空格，保持原样
-- "摘 要" 中间也有全角空格，保持原样
-- 通讯作者在姓名后加 `*` 标记
-- DOI 链接应为完整的 https://doi.org/... 格式
-- 日期格式为：YYYY年M月D日（如 2025年3月12日），时间格式为 HH:MM
-- 使用当天日期和当前时间（约整到分钟）作为默认发布时间
-- 论文展示图片目标 4-5 张，优先选择标题页和含图表的页面
-- 责任编辑首次使用时询问用户，后续复用
+- **公众号名称** 从 profile 读取；新账号首次使用时创建新 profile
+- **论文推荐导读固定开头**："本期为大家推荐的内容为论文《...》（...），发表在 ... 期刊，欢迎大家学习与交流。" 不要改动
+- **"题 目"、"摘 要"** 中间有一个全角空格，三种格式都保持原样
+- **通讯作者** 在姓名后加 `*` 标记
+- **DOI** 链接用完整 `https://doi.org/...` 格式
+- **日期格式**：YYYY年M月D日（如 2026年4月11日），时间 HH:MM，默认用当天
+- **论文展示图片** 目标 4-5 张，优先标题页和图表页
+- **责任编辑** 从 profile 读取
+- **输出必须是三种格式**：`推文.md` / `推文.txt` / `article.json`，缺一不可
 
 ## Error Handling
 
-- If PyMuPDF is not installed: prompt `pip install PyMuPDF`
-- If no PDFs found in input folder: inform user and ask for correct path
-- If metadata extraction fails for a field: mark as `[待补充]` and ask user
-- If DOI lookup fails: mark DOI as `[待查找]` and remind user to manually check
-- If abstract extraction fails: try reading from the first 2 pages more carefully
+- PyMuPDF 未安装：提示 `pip install PyMuPDF`
+- 输入目录无 PDF：告知用户并要求正确路径
+- 某字段提取失败：标 `[待补充]` 并询问
+- DOI 查询失败：标 `[待查找]` 并提醒手动核对
+- SAGE PDF 下载 403：切换到 `download_sage_pdf.py` 走 cnpereading 镜像
+- `extract_pdf.py` 的 title/authors 提取异常（极常见）：无条件用 `lookup_doi.py` 覆盖
+- 通讯作者识别失败：必须视觉检查标题页图片
 
 ## Example Usage
 
+```
 User: "帮我推一篇论文"
---> 论文推荐流程, ask user for input path or use current working directory, process PDFs
+→ 论文推荐流程，询问 PDF 路径，加载 BCL profile，处理
 
-User: "论文推荐，pdf在桌面上"
---> Use Desktop path, find PDFs, process and generate
+User: "TUS 期刊有几篇新的 Online First，帮我推一下，这几张是草稿箱截图，不要重复"
+→ Step 0 去重 → Step 1.5 自动下载 PDF → Step 2-8 三格式输出
 
-User: "推送 F:/papers/xxx.pdf 到公众号"
---> Use specified path, process the PDF, generate output
+User: "推送 F:/papers/xxx.pdf"
+→ 直接从 Step 2 开始
 
-User: "征文启事，链接是 https://www.journals.elsevier.com/xxx"
---> 征文启事流程, 访问链接，提取征文信息，生成双语 JSON
-
-User: "帮我推一个CFP https://xxx.com/call-for-papers"
---> 同上
-
-User: "征文推送，这个期刊在征稿 [URL]"
---> 同上
+User: "征文启事，链接 https://www.journals.elsevier.com/xxx"
+→ 征文启事流程
+```
