@@ -19,18 +19,22 @@ description: "Generate WeChat public account (公众号) articles from academic 
 
 ## Scripts & Assets
 
-- **Scripts**: `~/.legacy-agent/skills/wechat-office-push/scripts/`
+- **Scripts**: `<skill_dir>/scripts/`
   - `extract_pdf.py` — 从 PDF 提取元数据、摘要和关键页图片
   - `lookup_doi.py` — 通过 CrossRef / Semantic Scholar 验证并补全 DOI 元数据
   - `download_sage_pdf.py` — 通过 sage.cnpereading.com 镜像站按 DOI 下载 SAGE 期刊 PDF（SAGE 官站 403 付费墙时使用）
-- **Templates**: `~/.legacy-agent/skills/wechat-office-push/templates/`
+  - `publication_ledger.py` — 维护 DOI 级制作/草稿/发布台账并与期刊目录比对
+  - `render_paper_article.py` — 从经核验的 `article_source.json` 生成三格式推送并复制账号二维码
+- **Templates**: `<skill_dir>/templates/`
   - `paper_template.md` / `paper_template.txt` / `paper_template.json` — 论文推荐三种输出模板
-- **Profiles**: `~/.legacy-agent/skills/wechat-office-push/profiles/`
+- **Profiles**: `<skill_dir>/profiles/`
   - `bcl.json` — 北京城市实验室BCL 账号配置（公众号名/责任编辑/尾部信息/二维码等）
   - 新建其它账号时追加 `<profile_id>.json`
-- **Assets**: `~/.legacy-agent/skills/wechat-office-push/assets/`
+- **Assets**: `<skill_dir>/assets/`
   - `qrcode.jpeg` — 默认二维码（BCL 复制到输出目录时重命名为 `bcl_qrcode.jpeg`）
   - `logo.png` — 账号 logo
+- **References**: `<skill_dir>/references/`
+  - `publication-ledger.md` — 发布事实层级、台账字段与公众号后台检索规则
 
 ## Dependencies
 
@@ -64,11 +68,18 @@ pip install PyMuPDF requests
 
 **在开始处理 PDF 之前**，若用户的推送任务来自某期刊的 Online First / Current Issue 等列表源（如"TUS 期刊最新一期"），**必须先做去重**：
 
-1. 询问用户草稿箱中已有哪些相关推送（截图或标题列表）
-2. WebFetch 获取期刊最新列表，整理英文标题 + DOI
-3. 做映射表：列表论文 vs 已推送，明确标记"🆕 未推送"和"✅ 已推送"
-4. 只对"🆕 未推送"的论文继续后续流程
-5. 展示候选清单让用户确认后再下载 PDF
+1. 读取 `references/publication-ledger.md`。
+2. 从期刊实时目录获取英文标题、DOI、期次/Online First 状态，禁止用旧缓存替代。
+3. 若用户已经登录公众号后台，优先检查“已发表记录”；只有无法访问后台时，才请用户提供截图或标题列表。
+4. 对每篇至少使用 DOI、完整英文标题和一个稳定英文短语交叉检索。中文译名只能作为辅助，不能单独判定未发布。
+5. 按以下事实层级判定：
+   - 公众号后台已发表记录：是否已发布的唯一事实源；
+   - 公众号草稿箱：是否已存草稿；
+   - 本地输出文件：是否已制作，不能据此推断发布状态；
+   - 期刊实时目录：候选论文范围。
+6. 用 `publication_ledger.py` 更新 DOI 台账，明确区分 `local_status`、`draft_status`、`wechat_status`。
+7. 做映射表并标记“🆕 未推送”“📝 已存草稿”“✅ 已发布”“⚠️ 待人工确认”。
+8. 只对“🆕 未推送”的论文继续后续流程；批量任务在用户确认范围后再下载 PDF。
 
 这一步防止重复劳动和重复推送。
 
@@ -81,10 +92,10 @@ pip install PyMuPDF requests
 
 用户若只给了 DOI 列表或期刊页面，未提供 PDF：
 - SAGE 官方 PDF (journals.sagepub.com) 常见 403（付费墙）
-- **改用 sage.cnpereading.com 镜像**：`https://sage.cnpereading.com/paragraph/download/?doi=<DOI>`
+- **改用 sage.cnpereading.com 镜像**：由脚本解析文章页的 `articleId`，再访问当前下载接口；旧 DOI 接口仅作回退
 - 使用内置脚本：
   ```bash
-  python "~/.legacy-agent/skills/wechat-office-push/scripts/download_sage_pdf.py" <doi> --out <target_dir> --name <filename.pdf>
+  python "<skill_dir>/scripts/download_sage_pdf.py" <doi> --out <target_dir> --name <filename.pdf>
   ```
 - 脚本会验证 PDF 魔数（`%PDF-`）确保下载到的是真 PDF
 - 批量下载用 `--doi-list dois.txt`
@@ -94,7 +105,7 @@ pip install PyMuPDF requests
 对每个 `.pdf` 文件运行：
 
 ```bash
-python "~/.legacy-agent/skills/wechat-office-push/scripts/extract_pdf.py" "<pdf_path>" "<output_dir>/<paper_subfolder>" --max-images 5
+python "<skill_dir>/scripts/extract_pdf.py" "<pdf_path>" "<output_dir>/<paper_subfolder>" --max-images 5
 ```
 
 提取内容：metadata、4-5 张关键页图片（标题页 + 图表页）、`metadata.json`。
@@ -104,7 +115,7 @@ python "~/.legacy-agent/skills/wechat-office-push/scripts/extract_pdf.py" "<pdf_
 **必须对每篇执行**：
 
 ```bash
-python "~/.legacy-agent/skills/wechat-office-push/scripts/lookup_doi.py" --doi "<doi>"
+python "<skill_dir>/scripts/lookup_doi.py" --doi "<doi>"
 # 或按标题查：--title "<paper_title>"
 ```
 
@@ -145,6 +156,16 @@ python "~/.legacy-agent/skills/wechat-office-push/scripts/lookup_doi.py" --doi "
 
 对每篇论文在 `output/<paper_slug>/` 下同时生成：
 
+优先把人工核验后的标题、作者、通讯作者、摘要、导读和图片列表保存为 `article_source.json`，再运行：
+
+```bash
+python "<skill_dir>/scripts/render_paper_article.py" \
+  "<output_dir>/<paper_slug>/article_source.json" \
+  --output-dir "<output_dir>/<paper_slug>" \
+  --profile "<skill_dir>/profiles/bcl.json" \
+  --qrcode-source "<skill_dir>/assets/qrcode.jpeg"
+```
+
 #### 6a. `推文.md`（markdown 版，便于 git diff 和阅读）
 
 按 `templates/paper_template.md` 填充。
@@ -171,7 +192,7 @@ python "~/.legacy-agent/skills/wechat-office-push/scripts/lookup_doi.py" --doi "
 ### Step 7: 复制固定资源
 
 ```bash
-cp "~/.legacy-agent/skills/wechat-office-push/assets/qrcode.jpeg" \
+cp "<skill_dir>/assets/qrcode.jpeg" \
    "<output_dir>/<paper_subfolder>/<profile.qrcode_filename>"
 ```
 
@@ -183,6 +204,21 @@ cp "~/.legacy-agent/skills/wechat-office-push/assets/qrcode.jpeg" \
 2. 列出每个 output 子文件夹的文件清单（确认三种格式都在）
 3. 询问是否需要调整翻译、导读、时间戳等
 4. 确认后结束
+
+### Step 9: 录入公众号草稿（仅在用户明确要求时）
+
+1. 先在公众号后台再次按 DOI 或英文标题检索，防止制作期间出现重复发布。
+2. 优先使用公众号后台“新的创作 → 选择已有内容”，从已发表的同类推送生成副本，以完整继承标题层级、段落、字号、颜色、分隔线、固定装饰图和页尾。
+3. 只替换副本中的标题、导读、论文信息、摘要和论文页图；保留账号固定资源。BCL 的 TUS 模板可用 `scripts/fill_wechat_template.ps1` 填充：脚本从 `article_source.json` 读取内容，把 5 张本地论文页图交给公众号自动上传，并在保存前校验中英文题目、作者、DOI、导读、摘要、旧模板残留和图片总数。
+4. 平台推荐语默认复用正文导读的首段固定句式：`本期为大家推荐的内容为论文《英文题目》（中文题目），发表在 Transactions in Urban Data, Science, and Technology 期刊，欢迎大家学习与交流。`。先按公众号计数规则（中文/非 ASCII 计 1，英文/数字/ASCII 约计 0.5，向上取整）检查 120 字限制；只有超限时才最小压缩套话，依次把期刊全称改为 `TUS`、把开头改为“本期推荐论文”、把结尾改为“欢迎学习与交流”。不得为省字删改已核验的中英文题目。
+5. “原文链接”是正文内 DOI 之外的独立设置，必须显式改为本篇 `https://doi.org/<DOI>`。保存前同时核对正文 DOI、原文链接和 `article_source.json` 三者完全一致；不得沿用模板论文链接。
+6. **仅对“论文推荐”类型**，保存前必须把“合集”设置为 `论文推荐`，并在保存后复核该值。征文启事、课程、新闻、教研动态等其他类型不默认加入该合集；它们必须按各自内容类型或用户明确要求选择合集。
+7. `fill_wechat_template.ps1` 默认只填充和校验；它只服务于论文推荐流程，会一并设置平台推荐语、原文链接和 `论文推荐` 合集。只有用户已明确授权保存草稿时才传入 `-SaveDraft`。该脚本没有发表、群发或定时发表能力。
+8. 对照 `article.json` 和标题页图片复核标题、作者、通讯作者、DOI；保存后必须再从草稿列表进入编辑页或只读预览，确认推荐语计数不超过 `120/120`，原文链接为本篇 DOI，合集为 `论文推荐`，新 DOI、英文题目、作者和图片均存在，且旧模板 DOI/题目不存在。
+9. 点击“保存为草稿”后更新台账为 `draft_status=saved`，记录草稿标题和检查时间。
+10. **默认停在草稿或预览页面等待用户确认。不得点击群发、发布、定时群发或任何等效按钮，除非用户在看过最终稿后再次明确授权。**
+11. 批量任务逐篇保存为独立草稿；不得把多篇论文误合并为一篇多图文，除非用户明确要求。
+12. 公众号可能自动保存调试副本。最终交付前按“标题 + 更新时间”检查草稿列表；疑似残留只能报告，未经用户明确授权不得删除。已授权清理时也必须逐篇确认标题与更新时间，并在删除后复核正式草稿仍在、草稿总数变化符合预期。
 
 ---
 

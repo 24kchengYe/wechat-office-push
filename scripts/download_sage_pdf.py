@@ -4,10 +4,12 @@ download_sage_pdf.py
 Download SAGE-published paper PDFs via the sage.cnpereading.com mirror.
 
 SAGE's official journals.sagepub.com PDFs are paywalled (HTTP 403 without
-institutional access). The Chinese mirror at sage.cnpereading.com exposes a
-direct download endpoint using just the DOI:
+institutional access). The Chinese mirror at sage.cnpereading.com exposes an
+article page containing an internal articleId. Current PDFs use:
 
-    https://sage.cnpereading.com/paragraph/download/?doi=<DOI>
+    https://sage.cnpereading.com/website/journal/download?articleId=<ID>
+
+The older DOI endpoint remains as a fallback for legacy records.
 
 Usage:
     python download_sage_pdf.py <doi> [--out <path>] [--name <filename>]
@@ -33,7 +35,10 @@ import sys
 
 import requests
 
-MIRROR = "https://sage.cnpereading.com/paragraph/download/"
+ORIGIN = "https://sage.cnpereading.com"
+LEGACY_MIRROR = f"{ORIGIN}/paragraph/download/"
+ARTICLE_PAGE = f"{ORIGIN}/doi/{{doi}}"
+CURRENT_DOWNLOAD = f"{ORIGIN}/website/journal/download"
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                   "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
@@ -45,6 +50,43 @@ def slugify(doi: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]+", "-", doi).strip("-") + ".pdf"
 
 
+def get_pdf_response(doi: str) -> requests.Response:
+    session = requests.Session()
+    article = session.get(
+        ARTICLE_PAGE.format(doi=doi),
+        headers={**HEADERS, "Accept": "text/html,application/xhtml+xml"},
+        timeout=60,
+    )
+    if article.status_code == 200:
+        article_id = None
+        for pattern in (
+            r'\\"articleId\\":\\"([A-Fa-f0-9]{32})\\"',
+            r'"articleId"\s*:\s*"([A-Fa-f0-9]{32})"',
+        ):
+            match = re.search(pattern, article.text)
+            if match:
+                article_id = match.group(1)
+                break
+        if article_id:
+            response = session.get(
+                CURRENT_DOWNLOAD,
+                params={"articleId": article_id},
+                headers={**HEADERS, "Referer": article.url},
+                stream=True,
+                timeout=60,
+            )
+            if response.status_code == 200 and response.content.startswith(b"%PDF-"):
+                return response
+
+    return session.get(
+        LEGACY_MIRROR,
+        params={"doi": doi},
+        headers=HEADERS,
+        stream=True,
+        timeout=60,
+    )
+
+
 def download_one(doi: str, out_dir: pathlib.Path, name: str | None = None) -> bool:
     out_dir.mkdir(parents=True, exist_ok=True)
     filename = name or slugify(doi)
@@ -52,8 +94,7 @@ def download_one(doi: str, out_dir: pathlib.Path, name: str | None = None) -> bo
 
     print(f"[download] DOI={doi}")
     try:
-        resp = requests.get(MIRROR, params={"doi": doi}, headers=HEADERS,
-                            stream=True, timeout=60)
+        resp = get_pdf_response(doi)
     except requests.RequestException as e:
         print(f"  ✗ request failed: {e}")
         return False
