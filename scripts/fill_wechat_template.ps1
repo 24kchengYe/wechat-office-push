@@ -4,10 +4,6 @@ param(
 
     [long]$AppHwnd = 70919330,
 
-    [string]$ProfilePath = "",
-
-    [string]$TemplateConfigPath = "",
-
     [switch]$SaveDraft
 )
 
@@ -22,11 +18,9 @@ using System.Runtime.InteropServices;
 public class WeChatTemplateInput {
     [DllImport("user32.dll")] public static extern IntPtr SetThreadDpiAwarenessContext(IntPtr c);
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
-    [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] public static extern void mouse_event(uint f, uint x, uint y, uint d, UIntPtr e);
     [DllImport("user32.dll")] public static extern void keybd_event(byte v, byte s, uint f, UIntPtr e);
-    public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
 }
 '@
 
@@ -37,21 +31,6 @@ if (-not (Test-Path -LiteralPath $sourcePath)) {
     throw "Missing article_source.json: $sourcePath"
 }
 $article = Get-Content -LiteralPath $sourcePath -Raw -Encoding utf8 | ConvertFrom-Json
-
-if (-not $ProfilePath) {
-    $ProfilePath = Join-Path $PSScriptRoot "..\profiles\bcl.json"
-}
-if (-not (Test-Path -LiteralPath $ProfilePath)) { throw "Missing account profile: $ProfilePath" }
-$profile = Get-Content -LiteralPath $ProfilePath -Raw -Encoding utf8 | ConvertFrom-Json
-if (-not $TemplateConfigPath -and $profile.paper_template_config) {
-    $skillRoot = Split-Path -Parent $PSScriptRoot
-    $TemplateConfigPath = Join-Path $skillRoot ([string]$profile.paper_template_config)
-}
-$templateConfig = $null
-if ($TemplateConfigPath) {
-    if (-not (Test-Path -LiteralPath $TemplateConfigPath)) { throw "Missing template config: $TemplateConfigPath" }
-    $templateConfig = Get-Content -LiteralPath $TemplateConfigPath -Raw -Encoding utf8 | ConvertFrom-Json
-}
 
 $root = [System.Windows.Automation.AutomationElement]::FromHandle([IntPtr]$AppHwnd)
 $all = $root.FindAll(
@@ -83,12 +62,6 @@ if (-not $bodyEditor -or -not $titleEditor) {
 [WeChatTemplateInput]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero)
 [WeChatTemplateInput]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero)
 [WeChatTemplateInput]::SetForegroundWindow([IntPtr]$AppHwnd) | Out-Null
-$appRectangle = New-Object WeChatTemplateInput+RECT
-[WeChatTemplateInput]::GetWindowRect([IntPtr]$AppHwnd, [ref]$appRectangle) | Out-Null
-[WeChatTemplateInput]::SetCursorPos([int](($appRectangle.Left + $appRectangle.Right) / 2), [int]($appRectangle.Top + 20)) | Out-Null
-[WeChatTemplateInput]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
-[WeChatTemplateInput]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
-Start-Sleep -Milliseconds 300
 
 function Invoke-PhysicalClick {
     param(
@@ -206,8 +179,7 @@ function Get-ArticleCollectionArea {
 }
 
 # Set the headline before replacing the body because the body paste scrolls to its end.
-$headlinePrefix = if ($profile.headline_prefix) { [string]$profile.headline_prefix } else { "论文推荐" }
-$headline = $headlinePrefix + " | " + [string]$article.title_cn
+$headline = "论文推荐 | " + [string]$article.title_cn
 $titleRectangle = $titleEditor.Rectangle
 Invoke-PhysicalClick -X ($titleRectangle.Left + 120) -Y ($titleRectangle.Top + 30)
 [System.Windows.Forms.Clipboard]::SetText($headline)
@@ -215,31 +187,17 @@ Invoke-PhysicalClick -X ($titleRectangle.Left + 120) -Y ($titleRectangle.Top + 3
 [System.Windows.Forms.SendKeys]::SendWait("^v")
 Start-Sleep -Milliseconds 500
 
-# Load a frozen account-specific template asset when configured. BCL remains
-# backward compatible with copying the currently selected historical article.
+# Copy the complete rich-text template.
 $bodyRectangle = $bodyEditor.Rectangle
-$plainTemplate = ""
-$rawHtml = ""
-if ($templateConfig -and $templateConfig.template_cfhtml_asset) {
-    $skillRoot = Split-Path -Parent $PSScriptRoot
-    $assetPath = Join-Path $skillRoot ([string]$templateConfig.template_cfhtml_asset)
-    if (-not (Test-Path -LiteralPath $assetPath)) { throw "Missing frozen template asset: $assetPath" }
-    $compressed = [Convert]::FromBase64String((Get-Content -LiteralPath $assetPath -Raw -Encoding utf8).Trim())
-    $inputStream = New-Object System.IO.MemoryStream(, $compressed)
-    $gzipStream = New-Object System.IO.Compression.GZipStream($inputStream, [System.IO.Compression.CompressionMode]::Decompress)
-    $outputStream = New-Object System.IO.MemoryStream
-    $gzipStream.CopyTo($outputStream)
-    $gzipStream.Dispose(); $inputStream.Dispose()
-    $rawHtml = [System.Text.Encoding]::UTF8.GetString($outputStream.ToArray())
-    $outputStream.Dispose()
-} else {
-    Invoke-PhysicalClick -X ($bodyRectangle.Left + 100) -Y ($bodyRectangle.Top + 100)
-    [System.Windows.Forms.SendKeys]::SendWait("^a")
-    [System.Windows.Forms.SendKeys]::SendWait("^c")
-    Start-Sleep -Milliseconds 700
-    $plainTemplate = [System.Windows.Forms.Clipboard]::GetText()
-    $rawHtml = [string][System.Windows.Forms.Clipboard]::GetData([System.Windows.Forms.DataFormats]::Html)
-}
+Invoke-PhysicalClick -X ($bodyRectangle.Left + 100) -Y ($bodyRectangle.Top + 100)
+[System.Windows.Forms.SendKeys]::SendWait("^a")
+[System.Windows.Forms.SendKeys]::SendWait("^c")
+Start-Sleep -Milliseconds 700
+
+$plainTemplate = [System.Windows.Forms.Clipboard]::GetText()
+$rawHtml = [string][System.Windows.Forms.Clipboard]::GetData(
+    [System.Windows.Forms.DataFormats]::Html
+)
 $fragmentMatch = [regex]::Match(
     $rawHtml,
     "<!--StartFragment-->([\s\S]*?)<!--EndFragment-->"
@@ -249,27 +207,20 @@ if (-not $fragmentMatch.Success) {
 }
 $fragment = $fragmentMatch.Groups[1].Value
 
-if ($templateConfig) {
-    $oldEnglishTitle = [string]$templateConfig.old.title_en
-    $oldChineseTitle = [string]$templateConfig.old.title_cn
-    $oldAuthors = [string]$templateConfig.old.authors
-    $oldDoi = [string]$templateConfig.old.doi_url
-    $oldGuide = [string]$templateConfig.old.guide_cn
-    $oldAbstract = [string]$templateConfig.old.abstract_en
-    $templateValidationText = if ($plainTemplate) { $plainTemplate } else { $rawHtml }
-    foreach ($requiredOldText in @($oldEnglishTitle, $oldChineseTitle, $oldAuthors, $oldDoi, $oldGuide, $oldAbstract)) {
-        if (-not $requiredOldText -or -not $templateValidationText.Contains($requiredOldText)) {
-            throw "The selected article does not match template config '$($templateConfig.template_id)'."
-        }
-    }
-} else {
-    $oldEnglishTitle = "Nonlinear impacts of the configuration elements of life services on spatial vitality in the online-merge-offline context: A case study of Shanghai, China"
-    $oldChineseTitle = "生活服务配置要素对线上-线下融合情境下空间活力的非线性影响：以上海为例"
-    $oldAuthors = "Jing He, He Zhang*, Linghong Ke, Wenpei Zhou, Jingyi Peng"
-    $oldDoi = "https://doi.org/10.1177/27541231261426518"
-    $oldGuide = [regex]::Match($plainTemplate, "随着线上-线下融合[\s\S]+?提供了参考。").Value.Trim()
-    $oldAbstract = [regex]::Match($plainTemplate, "Despite the growing prevalence[\s\S]+?service configuration\.").Value.Trim()
-    if (-not $oldGuide -or -not $oldAbstract) { throw "Could not identify the BCL template guide or abstract." }
+$oldEnglishTitle = "Nonlinear impacts of the configuration elements of life services on spatial vitality in the online-merge-offline context: A case study of Shanghai, China"
+$oldChineseTitle = "生活服务配置要素对线上-线下融合情境下空间活力的非线性影响：以上海为例"
+$oldAuthors = "Jing He, He Zhang*, Linghong Ke, Wenpei Zhou, Jingyi Peng"
+$oldDoi = "https://doi.org/10.1177/27541231261426518"
+$oldGuide = [regex]::Match(
+    $plainTemplate,
+    "随着线上-线下融合[\s\S]+?提供了参考。"
+).Value.Trim()
+$oldAbstract = [regex]::Match(
+    $plainTemplate,
+    "Despite the growing prevalence[\s\S]+?service configuration\."
+).Value.Trim()
+if (-not $oldGuide -or -not $oldAbstract) {
+    throw "Could not identify the template guide or abstract."
 }
 
 $correspondingNames = @(
@@ -319,41 +270,43 @@ foreach ($imageFile in $article.image_files) {
     $imageDataUrls += "data:image/jpeg;base64," +
         [Convert]::ToBase64String([System.IO.File]::ReadAllBytes($imagePath))
 }
-$expectedPaperImages = if ($templateConfig -and $templateConfig.paper_images.expected_output_count) { [int]$templateConfig.paper_images.expected_output_count } else { 5 }
-if ($imageDataUrls.Count -ne $expectedPaperImages) { throw "Expected $expectedPaperImages paper images, got $($imageDataUrls.Count)." }
+if ($imageDataUrls.Count -ne 5) {
+    throw "Expected exactly five paper images, got $($imageDataUrls.Count)."
+}
 
-$paperImageStrategy = if ($templateConfig) { [string]$templateConfig.paper_images.strategy } else { "legacy_centered_wrappers" }
-if ($paperImageStrategy -eq "class_token") {
-    $classToken = [regex]::Escape([string]$templateConfig.paper_images.class_token)
-    $paperImagePattern = '<img\b(?=[^>]*\bclass="[^"]*\b' + $classToken + '\b[^"]*")[^>]*>'
-    $script:paperImageIndex = 0
-    $fragment = [regex]::Replace($fragment, $paperImagePattern, {
+# The template has four centered paper-page wrappers. Replace those and clone
+# the last wrapper once so the resulting article has five paper pages.
+$paperWrapperPattern = '<section style="text-align: center;" nodeleaf="">\s*<img\b[^>]*>\s*</section>'
+$script:paperWrapperIndex = 0
+$fragment = [regex]::Replace(
+    $fragment,
+    $paperWrapperPattern,
+    {
         param($match)
-        $index = $script:paperImageIndex; $script:paperImageIndex++
-        if ($index -ge $imageDataUrls.Count) { throw "The template contains more paper-image elements than expected." }
-        $updated = [regex]::Replace($match.Value, '(\bsrc=")[^"]*(")', ('$1' + $imageDataUrls[$index] + '$2'), 1)
-        $updated = [regex]::Replace($updated, '(\bdata-src=")[^"]*(")', ('$1' + $imageDataUrls[$index] + '$2'), 1)
-        return $updated
-    })
-    $expectedSourceCount = [int]$templateConfig.paper_images.expected_source_count
-    if ($script:paperImageIndex -ne $expectedSourceCount) { throw "Expected $expectedSourceCount template paper images, got $script:paperImageIndex." }
-} elseif ($paperImageStrategy -eq "legacy_centered_wrappers") {
-    $paperWrapperPattern = '<section style="text-align: center;" nodeleaf="">\s*<img\b[^>]*>\s*</section>'
-    $script:paperWrapperIndex = 0
-    $fragment = [regex]::Replace($fragment, $paperWrapperPattern, {
-        param($match)
-        $script:paperWrapperIndex++; $index = $script:paperWrapperIndex - 1
-        $wrapper = [regex]::Replace($match.Value, '(\bsrc=")[^"]*(")', ('$1' + $imageDataUrls[$index] + '$2'), 1)
+        $script:paperWrapperIndex++
+        $index = $script:paperWrapperIndex - 1
+        $wrapper = [regex]::Replace(
+            $match.Value,
+            '(\bsrc=")[^"]*(")',
+            ('$1' + $imageDataUrls[$index] + '$2'),
+            1
+        )
         if ($script:paperWrapperIndex -eq 4) {
-            $fifthWrapper = [regex]::Replace($match.Value, '(\bsrc=")[^"]*(")', ('$1' + $imageDataUrls[4] + '$2'), 1)
+            $fifthWrapper = [regex]::Replace(
+                $match.Value,
+                '(\bsrc=")[^"]*(")',
+                ('$1' + $imageDataUrls[4] + '$2'),
+                1
+            )
             return $wrapper + $fifthWrapper
         }
         return $wrapper
-    })
-    if ($script:paperWrapperIndex -ne 4) { throw "Expected four BCL paper-image wrappers, got $script:paperWrapperIndex." }
-} else { throw "Unsupported paper-image replacement strategy: $paperImageStrategy" }
+    }
+)
+if ($script:paperWrapperIndex -ne 4) {
+    throw "Expected four paper-image wrappers in the template, got $script:paperWrapperIndex."
+}
 
-Invoke-PhysicalClick -X ($bodyRectangle.Left + 100) -Y ($bodyRectangle.Top + 100)
 ConvertTo-CfHtml -Fragment $fragment -PlainText ([string]$article.guide_cn)
 [System.Windows.Forms.SendKeys]::SendWait("^a")
 [System.Windows.Forms.SendKeys]::SendWait("^v")
@@ -388,8 +341,7 @@ $booleanChecks = @(
     $checks.Abstract,
     $checks.OldTitleRemoved
 )
-$expectedTotalImages = if ($templateConfig -and $templateConfig.paper_images.expected_total_images) { [int]$templateConfig.paper_images.expected_total_images } else { 10 }
-if ($booleanChecks -contains $false -or $imageCount -ne $expectedTotalImages) {
+if ($booleanChecks -contains $false -or $imageCount -ne 10) {
     throw "Pre-save validation failed: $($checks | ConvertTo-Json -Compress)"
 }
 
@@ -511,7 +463,7 @@ if (-not $savedUrlElement) {
 # This script is exclusively for the 论文推荐 workflow. Assign those articles
 # to the 论文推荐 collection; other WeChat content types must not inherit this
 # rule merely because they use the same account.
-$collectionName = if ($templateConfig -and $templateConfig.collection_name) { [string]$templateConfig.collection_name } elseif ($profile.categories."论文推荐") { [string]$profile.categories."论文推荐" } else { "论文推荐" }
+$collectionName = "论文推荐"
 $collectionArea = Get-ArticleCollectionArea -AutomationRoot $root
 if (-not $collectionArea) {
     throw "The article collection setting was not found."
@@ -640,7 +592,6 @@ if ($SaveDraft) {
 }
 
 [pscustomobject]@{
-    profile_id = [string]$profile.profile_id
     headline = $headline
     doi = [string]$article.doi
     checks = $checks
