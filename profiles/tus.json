@@ -21,9 +21,7 @@
   "contact": {
     "website": "https://us.sagepub.com/en-us/nam/transactions-in-urban-data-science-and-technology/journal203731"
   },
-  "categories": {
-    "论文推荐": "论文推荐"
-  },
+  "categories": {},
   "paper_template_config": "profiles/tus-paper-template.json",
-  "notes": "2026-08-03从TUS公众号已发表论文推荐核验。固定装饰图和二维码从该账号已发表模板继承，不从BCL profile复制。"
+  "notes": "2026-08-03从TUS公众号已发表论文推荐核验。固定装饰图和二维码从该账号已发表模板继承，不从BCL profile复制；TUS账号的论文推送不选择合集。"
 }

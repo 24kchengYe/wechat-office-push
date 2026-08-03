@@ -9,12 +9,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-ALLOWED = {
+GLOBAL_ALLOWED = {
     "journal_status": {"current_issue", "online_first", "archived"},
     "local_status": {"not_started", "generated", "verified"},
+}
+
+ACCOUNT_ALLOWED = {
     "draft_status": {"none", "saved", "needs_review"},
     "wechat_status": {"unknown", "not_found", "published"},
 }
+
+ALLOWED = {**GLOBAL_ALLOWED, **ACCOUNT_ALLOWED}
 
 
 def now_iso() -> str:
@@ -42,12 +47,49 @@ def write_json(path: Path, data) -> None:
 
 def new_ledger(journal: str, catalog_url: str) -> dict:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "journal": journal,
         "catalog_url": catalog_url,
         "last_checked": now_iso(),
         "items": [],
     }
+
+
+def empty_account_status() -> dict:
+    return {
+        "draft_status": "none",
+        "draft_title": "",
+        "wechat_status": "unknown",
+        "publish_date": "",
+        "article_url": "",
+        "last_checked": "",
+        "evidence": [],
+    }
+
+
+def migrate_ledger(ledger: dict) -> dict:
+    """Upgrade schema-v1 single-account state to schema-v2 BCL state."""
+    if int(ledger.get("schema_version", 1)) >= 2:
+        return ledger
+    account_fields = {
+        "draft_status",
+        "draft_title",
+        "wechat_status",
+        "publish_date",
+        "article_url",
+        "last_checked",
+        "evidence",
+    }
+    for item in ledger.get("items", []):
+        status = empty_account_status()
+        for field in account_fields:
+            if field in item:
+                status[field] = item[field]
+        item["accounts"] = {"bcl": status}
+        for field in account_fields - {"last_checked"}:
+            item.pop(field, None)
+    ledger["schema_version"] = 2
+    return ledger
 
 
 def normalize_catalog(data) -> list[dict]:
@@ -84,13 +126,8 @@ def merge_catalog(ledger: dict, catalog_items: list[dict]) -> dict:
                 "journal_status": "current_issue",
                 "local_status": "not_started",
                 "local_path": "",
-                "draft_status": "none",
-                "draft_title": "",
-                "wechat_status": "unknown",
-                "publish_date": "",
-                "article_url": "",
+                "accounts": {},
                 "last_checked": stamp,
-                "evidence": [],
             }
             ledger.setdefault("items", []).append(target)
             indexed[doi] = target
@@ -102,32 +139,45 @@ def merge_catalog(ledger: dict, catalog_items: list[dict]) -> dict:
 
 
 def update_item(ledger: dict, args) -> dict:
+    ledger = migrate_ledger(ledger)
     doi = normalize_doi(args.doi)
     item = next((x for x in ledger.get("items", []) if normalize_doi(x["doi"]) == doi), None)
     if item is None:
         raise ValueError(f"DOI not found in ledger: {doi}")
-    for field in ALLOWED:
+    for field in GLOBAL_ALLOWED:
         value = getattr(args, field)
         if value is not None:
-            if value not in ALLOWED[field]:
+            if value not in GLOBAL_ALLOWED[field]:
                 raise ValueError(f"invalid {field}: {value}")
             item[field] = value
-    for field in ("local_path", "draft_title", "publish_date", "article_url"):
+    if args.local_path is not None:
+        item["local_path"] = args.local_path
+
+    account = item.setdefault("accounts", {}).setdefault(args.account, empty_account_status())
+    for field in ACCOUNT_ALLOWED:
         value = getattr(args, field)
         if value is not None:
-            item[field] = value
+            if value not in ACCOUNT_ALLOWED[field]:
+                raise ValueError(f"invalid {field}: {value}")
+            account[field] = value
+    for field in ("draft_title", "publish_date", "article_url"):
+        value = getattr(args, field)
+        if value is not None:
+            account[field] = value
     if args.evidence:
-        item.setdefault("evidence", []).extend(args.evidence)
-        item["evidence"] = list(dict.fromkeys(item["evidence"]))
-    item["last_checked"] = now_iso()
-    ledger["last_checked"] = item["last_checked"]
+        account.setdefault("evidence", []).extend(args.evidence)
+        account["evidence"] = list(dict.fromkeys(account["evidence"]))
+    stamp = now_iso()
+    account["last_checked"] = stamp
+    item["last_checked"] = stamp
+    ledger["last_checked"] = stamp
     return ledger
 
 
 def cmd_sync(args) -> None:
     ledger_path = Path(args.ledger)
     if ledger_path.exists():
-        ledger = read_json(ledger_path)
+        ledger = migrate_ledger(read_json(ledger_path))
     else:
         ledger = new_ledger(args.journal, args.catalog_url)
     ledger = merge_catalog(ledger, normalize_catalog(read_json(Path(args.catalog))))
@@ -143,14 +193,15 @@ def cmd_set(args) -> None:
 
 
 def cmd_report(args) -> None:
-    ledger = read_json(Path(args.ledger))
+    ledger = migrate_ledger(read_json(Path(args.ledger)))
     groups = {"published": [], "draft": [], "missing": [], "unknown": []}
     for item in ledger.get("items", []):
-        if item.get("wechat_status") == "published":
+        status = item.get("accounts", {}).get(args.account, empty_account_status())
+        if status.get("wechat_status") == "published":
             groups["published"].append(item)
-        elif item.get("draft_status") in {"saved", "needs_review"}:
+        elif status.get("draft_status") in {"saved", "needs_review"}:
             groups["draft"].append(item)
-        elif item.get("wechat_status") == "not_found":
+        elif status.get("wechat_status") == "not_found":
             groups["missing"].append(item)
         else:
             groups["unknown"].append(item)
@@ -173,6 +224,7 @@ def build_parser() -> argparse.ArgumentParser:
     setter = sub.add_parser("set", help="update status for one DOI")
     setter.add_argument("--ledger", required=True)
     setter.add_argument("--doi", required=True)
+    setter.add_argument("--account", default="bcl", help="account profile id, e.g. bcl or tus")
     for field, choices in ALLOWED.items():
         setter.add_argument(f"--{field.replace('_', '-')}", dest=field, choices=sorted(choices))
     for field in ("local_path", "draft_title", "publish_date", "article_url"):
@@ -182,6 +234,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     report = sub.add_parser("report", help="print a grouped publication-status report")
     report.add_argument("--ledger", required=True)
+    report.add_argument("--account", default="bcl", help="account profile id")
     report.set_defaults(func=cmd_report)
     return parser
 

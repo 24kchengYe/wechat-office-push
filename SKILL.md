@@ -5,7 +5,7 @@ description: "Generate WeChat public account (公众号) articles from academic 
 
 # 公众号推送 Skill
 
-为微信公众号自动生成推送内容（论文推荐、征文启事等）。每篇推送同时产出三种格式：`推文.md`（阅读/版本控制）、`推文.txt`（直接复制粘贴到公众号编辑器）、`article.json`（结构化数据，方便后续自动化）。
+为微信公众号自动生成推送内容（论文推荐、征文启事等）。每篇推送先维护一份经核验的 `article_source.json`，再按账号 profile 输出 `推文.md`、`推文.txt` 和 `article.json`；同一论文投放多个公众号时不得复制两份事实源。
 
 ## Supported Categories
 
@@ -25,10 +25,16 @@ description: "Generate WeChat public account (公众号) articles from academic 
   - `download_sage_pdf.py` — 通过 sage.cnpereading.com 镜像站按 DOI 下载 SAGE 期刊 PDF（SAGE 官站 403 付费墙时使用）
   - `publication_ledger.py` — 维护 DOI 级制作/草稿/发布台账并与期刊目录比对
   - `render_paper_article.py` — 从经核验的 `article_source.json` 生成三格式推送并复制账号二维码
+  - `fill_wechat_template.py` — 以账号专属模板填充 TUS 常规论文推送，设置推荐语/原文链接/可选合集并保存草稿；永不发布
+  - `fill_team_research_template.py` — 从结构化 Word 稿生成 BCL 长篇“团队研究”版式，保留 BCL 通用页尾；永不发布
 - **Templates**: `<skill_dir>/templates/`
   - `paper_template.md` / `paper_template.txt` / `paper_template.json` — 论文推荐三种输出模板
+  - `tus_paper_template.cfhtml.gz.b64` — TUS 账号常规论文历史模板
+  - `bcl_team_research_template.cfhtml.gz.b64` — BCL 长篇团队研究历史模板
 - **Profiles**: `<skill_dir>/profiles/`
   - `bcl.json` — 北京城市实验室BCL 账号配置（公众号名/责任编辑/尾部信息/二维码等）
+  - `tus.json` — 城市数据科学与技术汇刊TUS 账号配置；该账号论文推送不选择合集
+  - `bcl-paper-template.json` / `tus-paper-template.json` — 账号模板字段、图片槽位和合集规则
   - 新建其它账号时追加 `<profile_id>.json`
 - **Assets**: `<skill_dir>/assets/`
   - `qrcode.jpeg` — 默认二维码（BCL 复制到输出目录时重命名为 `bcl_qrcode.jpeg`）
@@ -59,6 +65,14 @@ pip install PyMuPDF requests
 - QR 文件：`bcl_qrcode.jpeg`
 
 若用户使用新账号，询问一次后保存为新的 profile。
+
+### BCL + TUS 双账号约定
+
+- 本地只维护一份经核验论文事实源；账号差异仅存在于 profile、模板、页尾、推荐语和合集设置中。
+- 账号输出放在 `output/<paper_slug>/accounts/<profile_id>/`，根目录源文件与 PDF/图片不复制、不删除。
+- 大批量任务先在一个账号完成全部独立草稿和核验，再切换账号批量创建另一账号草稿，减少误投和频繁切号。
+- BCL 的常规论文推荐必须选择 `论文推荐` 合集；TUS 自有公众号的论文推送明确不选合集。
+- 两个账号都只保存草稿并等待用户确认，不得因“批量完成”推断为允许发表。
 
 ---
 
@@ -209,16 +223,17 @@ cp "<skill_dir>/assets/qrcode.jpeg" \
 
 1. 先在公众号后台再次按 DOI 或英文标题检索，防止制作期间出现重复发布。
 2. 优先使用公众号后台“新的创作 → 选择已有内容”，从已发表的同类推送生成副本，以完整继承标题层级、段落、字号、颜色、分隔线、固定装饰图和页尾。
-3. 只替换副本中的标题、导读、论文信息、摘要和论文页图；保留账号固定资源。BCL 的 TUS 模板可用 `scripts/fill_wechat_template.ps1` 填充：脚本从 `article_source.json` 读取内容，把 5 张本地论文页图交给公众号自动上传，并在保存前校验中英文题目、作者、DOI、导读、摘要、旧模板残留和图片总数。
-4. 平台推荐语默认复用正文导读的首段固定句式：`本期为大家推荐的内容为论文《英文题目》（中文题目），发表在 Transactions in Urban Data, Science, and Technology 期刊，欢迎大家学习与交流。`。先按公众号计数规则（中文/非 ASCII 计 1，英文/数字/ASCII 约计 0.5，向上取整）检查 120 字限制；只有超限时才最小压缩套话，依次把期刊全称改为 `TUS`、把开头改为“本期推荐论文”、把结尾改为“欢迎学习与交流”。不得为省字删改已核验的中英文题目。
-5. “原文链接”是正文内 DOI 之外的独立设置，必须显式改为本篇 `https://doi.org/<DOI>`。保存前同时核对正文 DOI、原文链接和 `article_source.json` 三者完全一致；不得沿用模板论文链接。
-6. **仅对“论文推荐”类型**，保存前必须把“合集”设置为 `论文推荐`，并在保存后复核该值。征文启事、课程、新闻、教研动态等其他类型不默认加入该合集；它们必须按各自内容类型或用户明确要求选择合集。
-7. `fill_wechat_template.ps1` 默认只填充和校验；它只服务于论文推荐流程，会一并设置平台推荐语、原文链接和 `论文推荐` 合集。只有用户已明确授权保存草稿时才传入 `-SaveDraft`。该脚本没有发表、群发或定时发表能力。
-8. 对照 `article.json` 和标题页图片复核标题、作者、通讯作者、DOI；保存后必须再从草稿列表进入编辑页或只读预览，确认推荐语计数不超过 `120/120`，原文链接为本篇 DOI，合集为 `论文推荐`，新 DOI、英文题目、作者和图片均存在，且旧模板 DOI/题目不存在。
-9. 点击“保存为草稿”后更新台账为 `draft_status=saved`，记录草稿标题和检查时间。
-10. **默认停在草稿或预览页面等待用户确认。不得点击群发、发布、定时群发或任何等效按钮，除非用户在看过最终稿后再次明确授权。**
-11. 批量任务逐篇保存为独立草稿；不得把多篇论文误合并为一篇多图文，除非用户明确要求。
-12. 公众号可能自动保存调试副本。最终交付前按“标题 + 更新时间”检查草稿列表；疑似残留只能报告，未经用户明确授权不得删除。已授权清理时也必须逐篇确认标题与更新时间，并在删除后复核正式草稿仍在、草稿总数变化符合预期。
+3. 只替换副本中的标题、导读、论文信息、摘要和论文页图；保留当前账号固定资源。TUS 常规论文版式优先使用 `scripts/fill_wechat_template.py`，由 profile 决定账号模板与合集规则；旧的 `fill_wechat_template.ps1` 仅保留为受信任的 BCL 兼容入口。
+4. 用户提供完整 Word 解读稿且指定 BCL 历史长篇样式时，使用 `scripts/fill_team_research_template.py`：按 Word 标题样式识别“摘要/方法/结果与讨论/研究意义”，按 Caption 顺序插入 `fig1`—`fig5`，删除模板论文的项目专属推广区，只保留 BCL 通用页尾。不得强行套用 TUS 的“导读—论文相关—Abstract—论文展示”短版结构。
+5. 平台推荐语默认复用正文导读首段；TUS 常规论文优先使用固定句式。按公众号计数规则检查 120 字限制，只有超限时才最小压缩套话，不得删改已核验题目。BCL 长篇稿可用 120 字内的中文研究概述。
+6. “原文链接”是正文内 DOI 之外的独立设置，必须显式改为本篇 `https://doi.org/<DOI>`。保存前同时核对正文 DOI、原文链接和事实源三者一致。
+7. 合集是账号级规则：BCL 的论文推荐（包括长篇团队研究论文解读）选择 `论文推荐`；TUS 账号不选合集；非论文内容不默认加入该合集。
+8. 对照结构化源和标题页复核标题、作者、通讯作者、DOI；保存后确认推荐语不超过 `120/120`、原文链接正确、合集符合当前 profile、新题目/作者/图片存在且旧模板题目和 DOI 不存在。
+9. 点击“保存为草稿”后，以 `publication_ledger.py set --account <profile_id>` 更新对应账号的 `draft_status=saved`、草稿标题和证据；不得用 BCL 状态覆盖 TUS 状态。
+10. 所有填充脚本默认只填充和校验；只有用户明确授权保存草稿时才传保存参数。脚本没有发表、群发或定时发表能力。
+11. **默认停在草稿或预览页面等待用户确认。不得点击群发、发布、定时群发或任何等效按钮，除非用户在看过最终稿后再次明确授权。**
+12. 批量任务逐篇保存为独立草稿；不得把多篇论文误合并为一篇多图文，除非用户明确要求。
+13. 公众号可能自动保存调试副本。最终交付前按“标题 + 更新时间”检查草稿列表；疑似残留只能报告，未经用户明确授权不得删除。已授权清理时也必须逐篇确认标题与更新时间，并在删除后复核正式草稿仍在、草稿总数变化符合预期。
 
 ---
 

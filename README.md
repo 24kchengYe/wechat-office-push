@@ -3,6 +3,10 @@
 
 > **为微信公众号自动生成推送内容，支持论文推荐、征文启事等多种类别。**
 
+当前支持 BCL + TUS 双公众号工作流：同一篇论文只维护一份经核验事实源，按账号 profile 渲染不同页尾和模板，分别保存草稿。BCL 论文推荐选择“论文推荐”合集；TUS 自有公众号不选择合集。所有自动填充脚本都不会发布文章。
+
+除常规 TUS 论文短版外，还支持从完整 Word 稿生成 BCL 长篇“团队研究”版式：自动识别摘要、方法、结果与讨论、研究意义以及 5 张图的 Caption 顺序，并保留 BCL 通用页尾。
+
 ## 功能
 
 ### 论文推荐
@@ -65,6 +69,8 @@
 ### 支持的推送类别
 
 - ✅ **论文推荐** (Paper Recommendation)
+- ✅ **BCL + TUS 双账号独立草稿**
+- ✅ **BCL 长篇团队研究 Word 模板**
 - ✅ **征文启事** (Call for Papers)
 - 📋 会议推荐 — 规划中
 - 📋 MOOC 慕课推送 — 规划中
@@ -127,8 +133,13 @@ wechat-office-push/
 ├── assets/
 │   ├── qrcode.jpeg       ← 公众号二维码
 │   └── logo.png          ← 公众号 Logo
+├── profiles/
+│   ├── bcl.json           ← BCL 账号配置
+│   └── tus.json           ← TUS 账号配置（不选合集）
 └── templates/
-    └── paper_template.md  ← Markdown 推文模板
+    ├── paper_template.md  ← Markdown 推文模板
+    ├── tus_paper_template.cfhtml.gz.b64
+    └── bcl_team_research_template.cfhtml.gz.b64
 ```
 
 ## 输出格式

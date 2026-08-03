@@ -7,7 +7,7 @@
 3. 以微信公众号草稿箱判定是否存在待发草稿。
 4. 以本地输出目录判定是否已经制作。
 
-四种状态必须分开记录。发现本地产物与后台状态冲突时，保留两者并按上述层级解释，不得覆盖成单一“已完成”状态。
+四种状态必须分开记录。多公众号投放时，`local_status` 仍是 DOI 级共享状态，但草稿与已发表状态必须按账号分别记录。发现本地产物与任一账号后台状态冲突时，保留两者并按上述层级解释，不得覆盖成单一“已完成”状态。
 
 ## 后台检索规则
 
@@ -21,7 +21,7 @@
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "journal": "Transactions in Urban Data, Science, and Technology",
   "catalog_url": "https://sage.cnpereading.com/toc/tusa",
   "last_checked": "YYYY-MM-DDTHH:MM:SS+08:00",
@@ -33,13 +33,27 @@
       "journal_status": "current_issue",
       "local_status": "not_started",
       "local_path": "",
-      "draft_status": "none",
-      "draft_title": "",
-      "wechat_status": "not_found",
-      "publish_date": "",
-      "article_url": "",
       "last_checked": "YYYY-MM-DDTHH:MM:SS+08:00",
-      "evidence": ["backend search: exact English title = 0"]
+      "accounts": {
+        "bcl": {
+          "draft_status": "saved",
+          "draft_title": "论文推荐 | ...",
+          "wechat_status": "not_found",
+          "publish_date": "",
+          "article_url": "",
+          "last_checked": "YYYY-MM-DDTHH:MM:SS+08:00",
+          "evidence": ["BCL backend search: exact English title = 0"]
+        },
+        "tus": {
+          "draft_status": "saved",
+          "draft_title": "论文推荐 | ...",
+          "wechat_status": "not_found",
+          "publish_date": "",
+          "article_url": "",
+          "last_checked": "YYYY-MM-DDTHH:MM:SS+08:00",
+          "evidence": ["TUS backend search and draft validation completed"]
+        }
+      }
     }
   ]
 }
@@ -55,7 +69,9 @@
 ## 操作要求
 
 - 以 DOI（转小写、去除 `https://doi.org/`）作为唯一键。
+- 账号键使用 profile id（当前为 `bcl`、`tus`）；通过 `publication_ledger.py set/report --account <id>` 操作，不得混写。
 - 每次后台或目录核对后更新 `last_checked` 和 `evidence`。
 - 只有看到后台已发表记录才能写 `wechat_status=published`。
 - 只有成功保存并重新打开草稿确认内容存在，才能写 `draft_status=saved`。
 - 群发后再次回到已发表记录核验，再把草稿状态清空并写入发布日期和文章地址。
+- `schema_version=1` 的旧台账由脚本自动迁移：原草稿/发布字段归入 `accounts.bcl`，再按实际核验补充其它账号。
