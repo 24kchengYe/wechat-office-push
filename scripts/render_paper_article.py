@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Render verified paper metadata into BCL WeChat article artifacts."""
+"""Render verified paper metadata into account-specific WeChat artifacts."""
 
 from __future__ import annotations
 
@@ -46,13 +46,20 @@ def render(source: dict, profile: dict, output_dir: Path) -> None:
         f"![论文第{int(name[5:8])}页]({name})" for name in image_files
     )
     image_txt = "\n\n".join(f"【配图：{name}】" for name in image_files)
-    footer = "\n\n".join(profile["footer_text"])
-    footer_md = footer.replace(
-        f"【配图：{profile['qrcode_filename']}】",
-        f"![BCL二维码]({profile['qrcode_filename']})",
-    )
+    footer = "\n\n".join(profile.get("footer_text", []))
+    footer_md = footer
+    qrcode_filename = profile.get("qrcode_filename", "")
+    if qrcode_filename:
+        footer_md = footer_md.replace(
+            f"【配图：{qrcode_filename}】",
+            f"![{profile.get('account_short', profile['account_name'])}二维码]({qrcode_filename})",
+        )
+    headline_prefix = profile.get("headline_prefix", "论文推荐")
+    editor_line = ""
+    if profile.get("show_editor", bool(profile.get("default_editor"))):
+        editor_line = f"\n\n责任编辑：{profile['default_editor']}"
 
-    md = f"""# 论文推荐 | {title_cn}
+    md = f"""# {headline_prefix} | {title_cn}
 
 {profile["account_name"]} {date} {time}
 
@@ -90,14 +97,12 @@ def render(source: dict, profile: dict, output_dir: Path) -> None:
 
 ---
 
-{footer_md}
-
-责任编辑：{profile["default_editor"]}
+{footer_md}{editor_line}
 
 [阅读原文]({doi_url})
 """
 
-    txt = f"""论文推荐 | {title_cn}
+    txt = f"""{headline_prefix} | {title_cn}
 
 {profile["account_name"]} {date} {time}
 
@@ -137,9 +142,7 @@ DOI：{doi_url}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-{footer}
-
-责任编辑：{profile["default_editor"]}
+{footer}{editor_line}
 
 阅读原文：{doi_url}
 """
@@ -149,8 +152,9 @@ DOI：{doi_url}
         "type": "论文推荐",
         "title_cn": title_cn,
         "title_en": title_en,
-        "headline": f"论文推荐 | {title_cn}",
+        "headline": f"{headline_prefix} | {title_cn}",
         "account": profile["account_name"],
+        "profile_id": profile.get("profile_id", ""),
         "date": date,
         "time": time,
         "导读": guide,
@@ -171,14 +175,10 @@ DOI：{doi_url}
         "摘要": source["abstract_en"],
         "论文展示": image_files,
         "footer": {
-            "qrcode": profile["qrcode_filename"],
-            "account_intro": f'请搜索微信号"{profile["contact"]["search_id"]}"关注。',
-            "email": profile["contact"]["email"],
-            "emaillist": profile["contact"]["emaillist"],
-            "weibo": profile["contact"]["weibo"],
-            "wechat_id": profile["contact"]["wechat_id"],
-            "website": profile["contact"]["website"],
-            "责任编辑": profile["default_editor"],
+            "qrcode": qrcode_filename,
+            "account_intro": profile.get("account_intro", ""),
+            "contact": profile.get("contact", {}),
+            "责任编辑": profile.get("default_editor", "") if profile.get("show_editor", True) else "",
             "阅读原文": doi_url,
         },
     }
@@ -199,7 +199,7 @@ def main() -> None:
     source = load_json(args.source)
     profile = load_json(args.profile)
     render(source, profile, args.output_dir)
-    if args.qrcode_source:
+    if args.qrcode_source and profile.get("qrcode_filename"):
         shutil.copy2(args.qrcode_source, args.output_dir / profile["qrcode_filename"])
     print(f"Rendered 推文.md, 推文.txt, article.json -> {args.output_dir}")
 

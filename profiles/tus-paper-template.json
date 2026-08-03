@@ -1,0 +1,21 @@
+{
+  "template_id": "tus_recent_paper_20260529",
+  "template_cfhtml_asset": "templates/tus_paper_template.cfhtml.gz.b64",
+  "source_headline": "论文推荐 | 疫情期间社会行为动态的时空差异：基于美国主要城市多源大数据的洞察",
+  "old": {
+    "title_en": "Spatiotemporal disparities of social-behavioral dynamics during pandemics: Insights from multi-source big data in major U.S. cities",
+    "title_cn": "疫情期间社会行为动态的时空差异：基于美国主要城市多源大数据的洞察",
+    "authors": "Lei Zou*, Binbin Lin, Thiagarajan Ramakrishnan, Mingzheng Yang",
+    "doi_url": "https://doi.org/10.1177/27541231261418712",
+    "guide_cn": "大流行病对全球健康产生深远影响，显著重塑了社会互动与行为模式，包括意识和焦虑的增强、流动性的降低，以及封锁和社交距离等政策的实施。理解社会行为动态的时空差异及其与疫情演进的短期和长期交互关系，对于设计有效的应对策略至关重要。本研究利用社交媒体数据、智能手机捕获的出行指标以及网络抓取的政策评估数据，构建了一个综合框架，用于量化疫情期间社会行为动态的地理和时间维度。以新冠疫情为案例，研究聚焦于2020至2021年美国十个人口最多的城市，分析多源地理空间大数据构建的社会行为指数，揭示了十个城市间社会行为动态的地理和时间差异，并考察了社会行为变化与健康结果之间的关系和滞后效应。研究凸显了多源大数据与先进计算方法在公共卫生决策和未来疫情防备方面的潜力。",
+    "abstract_en": "Pandemics have profound global health impacts, significantly reshaping social interactions and behaviors, including heightened awareness and anxiety, reduced mobility, and implementing policies like lockdowns and social distancing during outbreaks. Meanwhile, effective social and behavioral responses can be rapidly deployed to mitigate pandemics. Understanding the spatiotemporal disparities of social-behavioral dynamics and their short- and long-term interactions with pandemic progression is crucial for designing effective responses. However, deciphering these dynamics and their complex interactions remains challenging. This research leverages social media data, mobility metrics captured by smartphones, and web-harvested policy evaluations to develop a comprehensive framework for quantifying social-behavioral dynamics during pandemics across geographic and temporal dimensions. Using COVID-19 as a case study, the research focuses on the ten most populous U.S. cities during 2020–2021. The objectives are: (1) to analyze diverse geospatial big data to construct indexes that capture social-behavioral dynamics, (2) to uncover geographic and temporal disparities in these dynamics among the ten cities, and (3) to examine the relationships and lag effects between social-behavioral changes and health outcomes throughout the two years. This work underscores the potential of multi-sourced big data and advanced computing methods to inform public health decision-making and enhance preparedness for future pandemics."
+  },
+  "paper_images": {
+    "strategy": "class_token",
+    "class_token": "js_insertlocalimg",
+    "expected_source_count": 5,
+    "expected_output_count": 5,
+    "expected_total_images": 12
+  },
+  "collection_name": "论文推荐"
+}

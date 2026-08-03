@@ -1,0 +1,29 @@
+{
+  "profile_id": "tus",
+  "account_name": "城市数据科学与技术汇刊TUS",
+  "account_short": "TUS",
+  "headline_prefix": "论文推荐",
+  "default_editor": "",
+  "show_editor": false,
+  "qrcode_filename": "",
+  "qrcode_source": "",
+  "default_working_dir": "<work_dir>",
+  "account_intro": "扫码关注我们，获取更多期刊论文内容及相关资讯。",
+  "footer_text": [
+    "更多期刊资讯，请点击文末“阅读原文”，或复制【期刊主页链接】至浏览器搜索查看。欢迎来自所有国家和背景的作者投稿！",
+    "【期刊主页链接】：",
+    "https://us.sagepub.com/en-us/nam/transactions-in-urban-data-science-and-technology/journal203731",
+    "【账号固定素材：期刊二维码，由TUS历史模板继承】",
+    "扫码关注我们",
+    "获取更多期刊论文内容及相关资讯",
+    "Transactions in Urban Data, Science, and Technology"
+  ],
+  "contact": {
+    "website": "https://us.sagepub.com/en-us/nam/transactions-in-urban-data-science-and-technology/journal203731"
+  },
+  "categories": {
+    "论文推荐": "论文推荐"
+  },
+  "paper_template_config": "profiles/tus-paper-template.json",
+  "notes": "2026-08-03从TUS公众号已发表论文推荐核验。固定装饰图和二维码从该账号已发表模板继承，不从BCL profile复制。"
+}
