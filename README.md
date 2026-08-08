@@ -3,7 +3,7 @@
 
 > **为微信公众号自动生成推送内容，支持论文推荐、征文启事等多种类别。**
 
-当前支持 BCL + TUS 双公众号工作流：同一篇论文只维护一份经核验事实源，按账号 profile 渲染不同页尾和模板，分别保存草稿。BCL 论文推荐选择“论文推荐”合集；TUS 自有公众号不选择合集。所有自动填充脚本都不会发布文章。
+当前支持三类论文分流：TUS 期刊论文同时生成 BCL + TUS 两个账号草稿；有完整整理稿的组内重要论文只生成 BCL 长篇“团队研究”草稿；只有 PDF 的组内普通论文只生成 BCL 正常“论文推荐”草稿。同一篇论文只维护一份经核验事实源，BCL 论文推送选择“论文推荐”合集，TUS 自有公众号不选择合集。所有自动填充脚本都不会发布文章。
 
 除常规 TUS 论文短版外，还支持从完整 Word 稿生成 BCL 长篇“团队研究”版式：自动识别摘要、方法、结果与讨论、研究意义以及 5 张图的 Caption 顺序，并保留 BCL 通用页尾。
 
@@ -118,7 +118,7 @@ git clone https://github.com/24kchengYe/wechat-office-push.git %USERPROFILE%\.le
 ### 依赖
 
 ```bash
-pip install PyMuPDF requests
+pip install PyMuPDF requests beautifulsoup4
 ```
 
 ## 文件结构

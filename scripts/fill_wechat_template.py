@@ -23,6 +23,7 @@ import win32api
 import win32clipboard
 import win32con
 import win32gui
+from bs4 import BeautifulSoup
 
 
 ctypes.windll.user32.SetProcessDPIAware()
@@ -183,6 +184,11 @@ def recommendation_count(value: str) -> int:
 
 
 def recommendation(article: dict) -> str:
+    if article.get("recommendation"):
+        value = article["recommendation"].strip()
+        if recommendation_count(value) > 120:
+            raise ValueError("platform recommendation exceeds 120 weighted characters")
+        return value
     en = article["title_en"]
     cn = article["title_cn"]
     candidates = [
@@ -207,50 +213,107 @@ def build_fragment(article_dir: Path, config: dict) -> str:
         raise ValueError("frozen template has no CF_HTML fragment")
     fragment = match.group(1)
     article = load_json(article_dir / "article_source.json")
+
+    # Historical BCL articles can contain a project/unit promotion between the
+    # paper body and the shared account footer. It is not part of the normal
+    # paper template, so drop the containing top-level section unless the
+    # article explicitly opts in to that promotion.
+    promotion_markers = config.get("drop_sections_containing", [])
+    if promotion_markers and not article.get("keep_optional_promotion", False):
+        soup = BeautifulSoup(fragment, "html.parser")
+        for marker in promotion_markers:
+            marker_node = soup.find(string=lambda value: value and marker in value)
+            if not marker_node:
+                continue
+            section = marker_node.find_parent("section")
+            if not section:
+                raise ValueError(f"promotion marker is not inside a section: {marker}")
+            # Climb through wrapper sections while they contain no images. The
+            # next parent in this historical template also owns the four paper
+            # images, so stopping at that boundary preserves the paper display.
+            while (
+                section.parent
+                and section.parent.name == "section"
+                and not section.parent.find("img")
+            ):
+                section = section.parent
+            section.decompose()
+        fragment = str(soup)
+
     corresponding = {item["name"] for item in article.get("corresponding_authors", [])}
     authors = ", ".join(
         item["name"] + ("*" if item["name"] in corresponding else "")
         for item in article["authors"]
     )
+    old = config["old"]
     replacements = {
-        config["old"]["title_en"]: article["title_en"],
-        config["old"]["title_cn"]: article["title_cn"],
-        config["old"]["authors"]: authors,
-        config["old"]["doi_url"]: "https://doi.org/" + article["doi"],
-        config["old"]["guide_cn"]: article["guide_cn"],
-        config["old"]["abstract_en"]: article["abstract_en"],
+        old["title_en"]: article["title_en"],
+        old["title_cn"]: article["title_cn"],
+        old["doi_url"]: "https://doi.org/" + article["doi"],
     }
+    if old.get("journal"):
+        replacements[old["journal"]] = article["journal"]
+    if old.get("authors"):
+        replacements[old["authors"]] = authors
+    if old.get("guide_cn"):
+        replacements[old["guide_cn"]] = article["guide_cn"]
+    if old.get("abstract_en"):
+        replacements[old["abstract_en"]] = article["abstract_en"]
+    for old_text, new_text in zip(
+        old.get("guide_blocks", []), article.get("guide_blocks", []), strict=True
+    ):
+        replacements[old_text] = new_text
+    for old_text, new_text in zip(
+        old.get("abstract_labels", []), article.get("abstract_labels", []), strict=True
+    ):
+        replacements[old_text] = new_text
+    for old_text, new_text in zip(
+        old.get("abstract_blocks", []), article.get("abstract_blocks", []), strict=True
+    ):
+        replacements[old_text] = new_text
     for old, new in replacements.items():
         if old not in fragment:
             raise ValueError(f"template source text missing: {old[:50]}")
         fragment = fragment.replace(old, html.escape(new, quote=False))
 
+    # Some BCL templates style the corresponding-author stars and final author
+    # in separate spans. Replace the main author span and remove every trailing
+    # sibling so no author from the historical article survives.
+    if config["old"].get("authors_core"):
+        soup = BeautifulSoup(fragment, "html.parser")
+        core = config["old"]["authors_core"]
+        node = soup.find(string=lambda value: value and core in value)
+        if not node:
+            raise ValueError("template author core text missing")
+        node.replace_with(authors)
+        author_span = soup.find(string=authors).parent
+        for sibling in list(author_span.next_siblings):
+            sibling.extract()
+        fragment = str(soup)
+
     images = []
-    for name in article["image_files"]:
+    image_names = article.get("backend_image_files", article["image_files"])
+    for name in image_names:
         path = article_dir / name
         images.append("data:image/jpeg;base64," + base64.b64encode(path.read_bytes()).decode())
     image_config = config["paper_images"]
     if len(images) != image_config["expected_output_count"]:
         raise ValueError("unexpected number of paper images")
-    token = re.escape(image_config["class_token"])
-    pattern = re.compile(rf'<img\b(?=[^>]*\bclass="[^"]*\b{token}\b[^"]*")[^>]*>')
-    index = 0
-
-    def replace_image(match):
-        nonlocal index
-        if index >= len(images):
-            raise ValueError("template has too many paper image elements")
-        value = match.group(0)
-        value = re.sub(r'(\bsrc=")[^"]*(")', rf"\g<1>{images[index]}\g<2>", value, count=1)
-        value = re.sub(
-            r'(\bdata-src=")[^"]*(")', rf"\g<1>{images[index]}\g<2>", value, count=1
+    soup = BeautifulSoup(fragment, "html.parser")
+    token = image_config["class_token"]
+    paper_tags = [
+        tag for tag in soup.find_all("img") if token in (tag.get("class") or [])
+    ]
+    if len(paper_tags) != image_config["expected_source_count"]:
+        raise ValueError(
+            f"expected {image_config['expected_source_count']} template paper images, "
+            f"got {len(paper_tags)}"
         )
-        index += 1
-        return value
-
-    fragment = pattern.sub(replace_image, fragment)
-    if index != image_config["expected_source_count"]:
-        raise ValueError(f"expected {image_config['expected_source_count']} template paper images, got {index}")
+    for tag, image_data in zip(paper_tags, images, strict=True):
+        tag["src"] = image_data
+        if tag.has_attr("data-src"):
+            tag["data-src"] = image_data
+    fragment = str(soup)
     return fragment
 
 
@@ -276,10 +339,14 @@ def fill(args) -> dict:
 
     activate_window(args.hwnd)
     headline = f"{profile.get('headline_prefix', '论文推荐')} | {article['title_cn']}"
+    scroll_into_view(UIA, title)
+    title.SetFocus()
     click_element(title, args.hwnd)
     set_unicode_clipboard(headline)
     chord("a"); chord("v")
 
+    scroll_into_view(UIA, body)
+    body.SetFocus()
     click_element(body, args.hwnd)
     set_rich_clipboard(fragment, article["guide_cn"])
     chord("a"); chord("v")
@@ -307,9 +374,12 @@ def fill(args) -> dict:
         "chinese_title": article["title_cn"] in body_text,
         "doi": article["doi"] in body_text,
         "authors": author_line in body_text,
-        "guide": article["guide_cn"][:30] in body_text,
-        "abstract": article["abstract_en"][:50] in body_text,
+        "guide": article.get("guide_blocks", [article["guide_cn"]])[0][:30] in body_text,
+        "abstract": article.get("abstract_blocks", [article["abstract_en"]])[0][:50] in body_text,
         "old_title_removed": config["old"]["title_cn"] not in body_text,
+        "optional_promotion_removed": not any(
+            marker in body_text for marker in config.get("drop_sections_containing", [])
+        ),
         "images": body_images,
         "paper_images": paper_images,
     }
@@ -327,8 +397,16 @@ def fill(args) -> dict:
     description = find_first(automation, root, UIA_AUTOMATION_ID, "js_description")
     if not description:
         raise RuntimeError("platform recommendation field not found")
-    scroll_into_view(UIA, description); click_element(description, args.hwnd)
-    set_unicode_clipboard(rec); chord("a"); chord("v")
+    description.GetCurrentPattern(VALUE_PATTERN).QueryInterface(
+        UIA.IUIAutomationValuePattern
+    ).SetValue(rec)
+    if (
+        description.GetCurrentPattern(VALUE_PATTERN)
+        .QueryInterface(UIA.IUIAutomationValuePattern)
+        .CurrentValue
+        != rec
+    ):
+        raise RuntimeError("platform recommendation validation failed")
 
     doi_url = "https://doi.org/" + article["doi"]
     url_area = find_first(automation, root, UIA_AUTOMATION_ID, "js_article_url_area")
@@ -345,7 +423,10 @@ def fill(args) -> dict:
     if not current_url:
         raise RuntimeError("current original link not found")
     if current_url.CurrentName != doi_url:
-        click_element(automation.RawViewWalker.GetParentElement(current_url), args.hwnd)
+        # Click the URL text itself.  Clicking its row container can land on the
+        # neighbouring "原创" setting when Chromium reports a stale scrolled
+        # rectangle (especially at Windows display scales above 100%).
+        click_element(current_url, args.hwnd)
         url_input = find_first(automation, root, UIA_NAME, "输入或粘贴原文链接")
         if not url_input:
             raise RuntimeError("original-link input did not open")
@@ -355,11 +436,18 @@ def fill(args) -> dict:
         confirm = find_first(automation, root, UIA_NAME, "确定")
         if not confirm:
             raise RuntimeError("original-link confirmation missing")
-        invoke(UIA, confirm); time.sleep(0.7)
+        invoke(UIA, confirm)
+        time.sleep(1.5)
 
     # Confirming the link re-renders the settings panel; reacquire the root so
     # subsequent collection/save lookups do not use a stale accessibility tree.
     root = automation.ElementFromHandle(args.hwnd)
+    url_area = find_first(automation, root, UIA_AUTOMATION_ID, "js_article_url_area")
+    if not url_area:
+        raise RuntimeError("original-link setting disappeared after confirmation")
+    saved_urls = find_all(automation, url_area, UIA_CONTROL_TYPE, 50020)
+    if not any(saved_urls.GetElement(i).CurrentName == doi_url for i in range(saved_urls.Length)):
+        raise RuntimeError("original link was not updated after confirmation")
 
     collection = config.get("collection_name", "论文推荐")
     collection_area = None

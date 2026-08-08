@@ -1,0 +1,36 @@
+{
+  "template_id": "bcl_normal_paper_commercial_food_environment_2026",
+  "template_cfhtml_asset": "templates/bcl_normal_paper_template.cfhtml.gz.b64",
+  "source_headline": "论文推荐 | 商业食品环境与认知健康：来自114个城市社区的研究结果",
+  "old": {
+    "title_en": "Commercial food environment and cognitive health: findings from 114\u00a0urban communities",
+    "title_cn": "商业食品环境与认知健康：来自114个城市社区的研究结果",
+    "authors_core": "Weiju Zhou, Deanna Sim, Yanxi Zeng, He Li, Xiangwei Dai, Yaojing Chen, Jiuxuan Gao, Yue Ma, Ying Long, Zhanjun Zhang",
+    "journal": "Environmental Research",
+    "doi_url": "https://doi.org/10.1016/j.envres.2025.123640",
+    "guide_blocks": [
+      "背景：社区商业食品环境与认知功能之间的关联仍未明确，在人口高密度的城市环境中尤为如此。本研究旨在探讨城市社区内不同类型零售食品门店的密度与老年人认知功能之间的关系。",
+      "方法：本研究分析了北京社区认知功能筛查（CCFS）项目的数据，该研究纳入了居住在北京五环内114个城市社区的61842名老年人（平均年龄70.9岁，女性占60.5%）。采用修订版简易精神状态检查（Mini-MMSE，分值范围0-13）和情景记忆测试（EMT，分值范围0-100）评估研究对象的认知功能。主要暴露因素为餐厅密度（代表整体商业食品可及性），次要暴露因素包括快餐店、甜点/饮品/糕点店以及果蔬店的密度。本研究采用多水平线性和逻辑回归模型，在调整社会人口学和环境协变量后，估算上述暴露因素与认知功能之间的关联。",
+      "结果：研究对象的Mini-MMSE平均得分为12.3（标准差1.3），EMT平均得分为90.6（标准差9.2）。餐厅总密度每增加一个四分位距（IQR），与Mini-MMSE得分降低相关（β = -0.002，95%置信区间：-0.004~-0.001），同时也与EMT得分降低相关（β = -0.004，95%置信区间：-0.005~-0.003）。快餐店密度的增加呈现出相似的负相关：Mini-MMSE得分每增加一个四分位距下降0.003分（β = -0.003，95%置信区间：-0.004~-0.002），该效应与年龄每增长一岁导致的认知功能下降程度相当。相反，果蔬店密度每增加一个四分位距，与Mini-MMSE得分升高相关（β = 0.002，95%置信区间：0.001~0.003）；而果蔬店与快餐店的密度比与认知功能的关联更强（β = 0.003，95%置信区间：0.002~0.005）。认知功能与甜点、饮品或糕点店的密度之间未发现显著关联。",
+      "结论：研究结果表明，果蔬店可及性相对快餐店更高、食品环境更均衡的社区，或有助于缓解老年人随年龄增长出现的认知功能下降。这也凸显了城市规划和政策干预在打造更健康食品环境方面的潜力，此类举措对维护快速老龄化城市人口的认知健康和认知韧性具有重要意义。"
+    ],
+    "abstract_labels": ["Background", "Methods", "Results", "Conclusions"],
+    "abstract_blocks": [
+      "The association between neighborhood commercial food environments and cognitive function in older adults remains unclear, particularly in high-density urban settings. This study aimed to investigate the relationship between the density of various types of retail food outlets and cognitive function in older adults within community settings.",
+      "We analyzed data from the Beijing Community-based Cognitive Function Screening (CCFS) program, which included 61,842 older adults (mean age: 70.9 years; 60.5% female) residing in 114 urban communities within the Fifth Ring Road of Beijing. Cognitive function was assessed using adapted versions of the Mini-Mental State Examination (Mini-MMSE; range: 0-13) and the Episodic Memory Test (EMT; range: 0-100). The primary exposure was total restaurant density, representing overall commercial food availability. Secondary exposures included the densities of fast-food restaurants, dessert/drink/pastry shops, and fruit and vegetable stores. Multilevel linear and logistic regression models were used to estimate associations, adjusting for sociodemographic and environmental covariates.",
+      "The mean Mini-MMSE and EMT scores were 12.3 (SD 1.3) and 90.6 (SD 9.2), respectively. Each interquartile range (IQR) increase in total restaurant density was associated with lower Mini-MMSE (β = -0.002, 95% CI: -0.004 to -0.001) and EMT scores (β = -0.004, -0.005 to -0.003). Fast-food restaurant density showed similar inverse associations; for Mini-MMSE, each IQR increase was associated with a 0.003-point decrease (β = -0.003, -0.004 to -0.002), an effect comparable to the decline associated with one additional year of age. In contrast, higher density of fruit and vegetable stores was positively associated with Mini-MMSE scores (β = 0.002, 0.001 to 0.003), and the ratio of fruit and vegetable stores to fast-food restaurants showed an even stronger association (β = 0.003, 0.002 to 0.005). No significant associations were found between cognitive outcomes and the density of dessert, drink, or pastry shops.",
+      "Our findings suggest that a more balanced neighborhood food environment, characterized by increased access to fruit and vegetable stores, particularly relative to fast-food outlets, may help attenuate the age-related decline in cognitive function among older adults. This underscores the potential for urban planning and policy interventions aimed at promoting healthier food environments to play a meaningful role in maintaining cognitive health and resilience in rapidly ageing urban populations."
+    ]
+  },
+  "drop_sections_containing": [
+    "更多相关的研究工作详见BCL的"
+  ],
+  "paper_images": {
+    "strategy": "class_token",
+    "class_token": "js_insertlocalimg",
+    "expected_source_count": 4,
+    "expected_output_count": 4,
+    "expected_total_images": 9
+  },
+  "collection_name": "论文推荐"
+}

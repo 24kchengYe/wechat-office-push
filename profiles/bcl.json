@@ -7,6 +7,7 @@
   "show_editor": true,
   "qrcode_filename": "bcl_qrcode.jpeg",
   "qrcode_source": "assets/qrcode.jpeg",
+  "paper_template_config": "profiles/bcl-paper-template.json",
   "default_working_dir": "<work_dir>",
   "footer_text": [
     "更多内容，请点击微信下方菜单即可查询。",
@@ -32,5 +33,5 @@
     "MOOC推送": "MOOC慕课推送",
     "教研动态": "教研动态"
   },
-  "notes": "首次使用时由用户确认，后续复用。若未来启用其它账号，新建 profiles/<profile_id>.json 并在调用时指定。"
+  "notes": "BCL 普通论文使用 bcl-paper-template.json；历史模板中的项目/单元推广区默认删除，只有用户明确指定时才保留。若未来启用其它账号，新建 profiles/<profile_id>.json 并在调用时指定。"
 }

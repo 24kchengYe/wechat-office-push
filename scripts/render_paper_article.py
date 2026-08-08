@@ -37,11 +37,28 @@ def render(source: dict, profile: dict, output_dir: Path) -> None:
     date = source["date"]
     time = source["time"]
     guide_paragraph = source["guide_cn"].strip()
-    opening = (
-        f"本期为大家推荐的内容为论文《{title_en}》（{title_cn}），"
-        f"发表在 {journal} 期刊，欢迎大家学习与交流。"
-    )
+    if source.get("opening_cn"):
+        opening = source["opening_cn"].strip()
+    elif source.get("source_language") == "zh":
+        opening = (
+            f"本期为大家推荐的内容为论文《{title_cn}》（{title_en}），"
+            f"发表在 {journal} 期刊，欢迎大家学习与交流。"
+        )
+    else:
+        opening = (
+            f"本期为大家推荐的内容为论文《{title_en}》（{title_cn}），"
+            f"发表在 {journal} 期刊，欢迎大家学习与交流。"
+        )
     guide = opening + guide_paragraph
+    abstract_display = source.get("abstract_display")
+    if not abstract_display:
+        abstract_display = (
+            source.get("abstract_cn")
+            if source.get("source_language") == "zh"
+            else source.get("abstract_en")
+        )
+    if not abstract_display:
+        abstract_display = source.get("abstract_en", "")
     image_md = "\n\n".join(
         f"![论文第{int(name[5:8])}页]({name})" for name in image_files
     )
@@ -87,7 +104,7 @@ def render(source: dict, profile: dict, output_dir: Path) -> None:
 
 ## 摘 要 ABSTRACT
 
-{source["abstract_en"]}
+{abstract_display}
 
 ---
 
@@ -132,7 +149,7 @@ DOI：{doi_url}
 
 【摘 要 ABSTRACT】
 
-{source["abstract_en"]}
+{abstract_display}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -172,7 +189,8 @@ DOI：{doi_url}
             "发表年份": source.get("year", 0),
             "备注": source.get("note", ""),
         },
-        "摘要": source["abstract_en"],
+        "摘要": abstract_display,
+        "推荐语": source.get("recommendation", opening),
         "论文展示": image_files,
         "footer": {
             "qrcode": qrcode_filename,
