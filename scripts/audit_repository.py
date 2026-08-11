@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import base64
 import gzip
+import io
 import re
 import subprocess
 from pathlib import Path
@@ -21,6 +22,9 @@ FORBIDDEN = {
     "private legacy work path": re.compile(r"D:" + r"[/\\]pythonPycharms[/\\]工具开发", re.I),
     "legacy-agent co-author trailer": re.compile(r"Co-Authored-By\s*:\s*legacy-agent", re.I),
     "legacy-provider co-author email": re.compile(r"noreply@legacy-provider\.com", re.I),
+    "private key": re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----", re.I),
+    "GitHub access token": re.compile(r"\b(?:ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b"),
+    "API secret": re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b"),
 }
 
 
@@ -31,6 +35,43 @@ def run(*args: str) -> bytes:
 def scan(label: str, data: bytes) -> list[str]:
     text = data.decode("utf-8", "replace")
     return [f"{label}: {name}" for name, pattern in FORBIDDEN.items() if pattern.search(text)]
+
+
+def historical_blobs() -> list[tuple[str, str, bytes]]:
+    """Return reachable Git blobs with one batched Git process per phase."""
+
+    object_paths: dict[str, str] = {}
+    for entry in run("git", "rev-list", "--objects", "--all").decode("utf-8", "replace").splitlines():
+        object_id, _, path = entry.partition(" ")
+        if path and path != SELF:
+            object_paths.setdefault(object_id, path)
+
+    request = ("\n".join(object_paths) + "\n").encode()
+    checked = subprocess.check_output(
+        ["git", "cat-file", "--batch-check=%(objectname) %(objecttype) %(objectsize)"],
+        cwd=ROOT,
+        input=request,
+    ).decode("ascii", "replace")
+    blob_ids = [line.split()[0] for line in checked.splitlines() if " blob " in line]
+    if not blob_ids:
+        return []
+
+    payload = subprocess.check_output(
+        ["git", "cat-file", "--batch"],
+        cwd=ROOT,
+        input=("\n".join(blob_ids) + "\n").encode(),
+    )
+    stream = io.BytesIO(payload)
+    blobs: list[tuple[str, str, bytes]] = []
+    for expected_id in blob_ids:
+        header = stream.readline().decode("ascii", "replace").strip().split()
+        if len(header) != 3 or header[1] != "blob":
+            raise RuntimeError(f"unexpected git cat-file response for {expected_id}")
+        size = int(header[2])
+        data = stream.read(size)
+        stream.read(1)  # trailing newline inserted by git cat-file --batch
+        blobs.append((expected_id, object_paths[expected_id], data))
+    return blobs
 
 
 def main() -> int:
@@ -58,6 +99,20 @@ def main() -> int:
             if "@" in email and not email.endswith("users.noreply.github.com"):
                 findings.append("git history metadata: author email is not a GitHub noreply address")
                 break
+
+    # A clean working tree is not sufficient for a public repository: secrets
+    # removed in a later commit remain downloadable from earlier Git blobs.
+    # Scan every unique historical blob, including decompressed rich-text
+    # templates, while excluding this scanner because it contains the patterns
+    # by definition.
+    for object_id, path, data in historical_blobs():
+        label = f"git history {path}@{object_id[:12]}"
+        findings.extend(scan(label, data))
+        if path.endswith(".cfhtml.gz.b64"):
+            try:
+                findings.extend(scan(label + " (decompressed)", gzip.decompress(base64.b64decode(data))))
+            except Exception as exc:
+                findings.append(f"{label}: template decode failed ({exc})")
 
     if findings:
         print("Repository safety audit: FAIL")

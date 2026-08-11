@@ -77,11 +77,11 @@ python "<skill_dir>/scripts/preflight.py" --profile "<profile_path>" --backend -
 ## 交接与隐私边界
 
 - 新负责人首先完整阅读 `HANDOFF.md` 与 `SECURITY.md`。
-- 仓库默认保持 Private，通过 GitHub collaborator 交接；不要长期传递脱离版本历史的压缩包。
+- 仓库可保持 Public 供负责人直接安装；需要维护代码时再由管理员添加 GitHub collaborator。不要长期传递脱离版本历史的压缩包。
 - 公众号账号密码、扫码图、Cookie、请求头、后台 `token=` URL、`wxid_*`、个人邮箱、本机绝对路径、论文 PDF、截图和草稿不得进入 Git。
 - 登录只由负责人现场扫码；技能既不导出也不保存登录态。
-- 提交、交接或讨论公开前运行 `python "<skill_dir>/scripts/audit_repository.py"`。
-- 未确认 BCL/TUS 二维码、Logo、历史富文本模板和文章片段的公开授权前，不得把仓库改为 Public。
+- 每次提交和交接前运行 `python "<skill_dir>/scripts/audit_repository.py"`。
+- BCL/TUS 二维码、Logo、公众号公开联系方式和已发表文章模板是公开识别与排版素材，不按登录凭据或隐私数据处理；其品牌与内容权利边界见 `ASSET_NOTICE.md`，不得据此冒充账号主体或重新授权第三方内容。
 
 ### BCL + TUS 双账号约定
 

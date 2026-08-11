@@ -4,7 +4,7 @@
 
 ## 1. 权限与安装
 
-仓库默认保持 **Private**。新负责人应由仓库管理员添加为 GitHub collaborator，不要通过压缩包长期分叉：
+仓库为 **Public**，新负责人可直接克隆；需要提交维护改动时，再由仓库管理员添加为 GitHub collaborator。不要通过压缩包长期分叉：
 
 ```powershell
 gh repo clone 24kchengYe/wechat-office-push "$env:USERPROFILE\.codex\skills\wechat-office-push"
@@ -41,7 +41,7 @@ python scripts\preflight.py --profile profiles\local\tus.json --backend --strict
 
 1. BCL 公众号后台操作权限；
 2. TUS 公众号后台操作权限；
-3. GitHub 私有仓库 collaborator 权限；
+3. GitHub 仓库写权限（仅在需要维护技能时）；
 4. 论文 PDF 或整理稿的合法访问权限。
 
 公众号登录只允许负责人现场扫码。技能不应读取、导出或保存登录凭据。
@@ -91,4 +91,4 @@ git status --short
 - 公众号编辑器改版后，自动化必须失败退出，不能用模糊坐标继续保存。
 - 模板替换后，先在无发布权限或测试草稿中验证标题、图片槽位、推荐语、原文链接和合集。
 - 离任时只转移 GitHub 与公众号的正式权限，不转移浏览器 Cookie、Codex 会话或个人电脑目录。
-- 需要公开仓库时，先确认 BCL/TUS 二维码、Logo、历史排版模板和文章片段的公开授权；未确认前保持 Private。
+- 仓库可以公开读取和安装；BCL/TUS 品牌素材与模板示例的使用边界见 `ASSET_NOTICE.md`，公开可见不等于可以冒充账号主体或重新授权第三方内容。

@@ -2,9 +2,9 @@
 
 > **为微信公众号自动生成推送内容，支持论文推荐、征文启事等多种类别。**
 
-这是供 BCL / TUS 公众号负责人传承使用的私有工作流。当前支持三类论文分流：TUS 期刊论文同时生成 BCL + TUS 两个账号草稿；有完整整理稿的组内重要论文只生成 BCL 长篇“团队研究”草稿；只有 PDF 的组内普通论文只生成 BCL 正常“论文推荐”草稿。同一篇论文只维护一份经核验事实源，BCL 论文推送选择“论文推荐”合集，TUS 自有公众号不选择合集。所有自动填充脚本都不会发布文章。
+这是供 BCL / TUS 公众号负责人传承使用的公开工作流。当前支持三类论文分流：TUS 期刊论文同时生成 BCL + TUS 两个账号草稿；有完整整理稿的组内重要论文只生成 BCL 长篇“团队研究”草稿；只有 PDF 的组内普通论文只生成 BCL 正常“论文推荐”草稿。同一篇论文只维护一份经核验事实源，BCL 论文推送选择“论文推荐”合集，TUS 自有公众号不选择合集。所有自动填充脚本都不会发布文章。
 
-> 仓库默认保持 **Private**。交接给下一位负责人时使用 GitHub collaborator；完整步骤见 [HANDOFF.md](HANDOFF.md)。
+> 仓库为 **Public**，任何负责人均可直接安装；只有提交维护改动才需要 collaborator 写权限。完整步骤见 [HANDOFF.md](HANDOFF.md)。
 
 除常规 TUS 论文短版外，还支持从完整 Word 稿生成 BCL 长篇“团队研究”版式：自动识别摘要、方法、结果与讨论、研究意义以及 5 张图的 Caption 顺序，并保留 BCL 通用页尾。
 
@@ -100,9 +100,9 @@
 
 ## 安装
 
-### GitHub 私有仓库安装（推荐）
+### GitHub 安装（推荐）
 
-先由管理员添加 collaborator，再克隆：
+直接克隆：
 
 ```powershell
 gh repo clone 24kchengYe/wechat-office-push "$env:USERPROFILE\.codex\skills\wechat-office-push"
@@ -225,7 +225,7 @@ wechat-office-push/
 - 隐私与泄漏处理：[SECURITY.md](SECURITY.md)
 - 提交或共享前运行：`python scripts/audit_repository.py`
 - `output/`、论文 PDF、截图、草稿、Cookie、后台 token、`wxid_*` 和 `profiles/local/` 永不进入 Git
-- 未确认 BCL/TUS 二维码、Logo、历史排版模板和文章片段的公开授权前，仓库保持 Private
+- BCL/TUS 二维码、Logo、公开联系方式和已发表文章模板不是登录凭据或隐私信息；品牌与内容使用边界见 [ASSET_NOTICE.md](ASSET_NOTICE.md)
 
 ## Changelog
 
@@ -269,5 +269,5 @@ wechat-office-push/
 
 ## Repository status and licensing
 
-本仓库当前为私有内部工作流，尚未授予公开再分发许可。代码、BCL/TUS 账号资产与历史排版模板的权利边界不同；若未来公开，应先拆分或取得相应授权，再补充正式 `LICENSE` 与资产声明。
+代码与通用文档按 [MIT License](LICENSE) 开放。BCL/TUS 二维码、Logo、账号名称、公开联系方式、公众号远程素材及历史文章内容不因仓库公开而改变其权利归属，详见 [ASSET_NOTICE.md](ASSET_NOTICE.md)。
 

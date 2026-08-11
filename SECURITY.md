@@ -10,7 +10,7 @@
 
 Public organization contacts intentionally present in `profiles/*.json` are content data, not login credentials. Personal editor names and machine paths belong in `profiles/local/`, which is ignored by Git.
 
-## Before sharing or changing visibility
+## Public repository boundary
 
 Run:
 
@@ -18,7 +18,9 @@ Run:
 python scripts\audit_repository.py
 ```
 
-The repository should remain private until the rights holder confirms that QR codes, logos, historical rich-text templates and article excerpts may be redistributed publicly. GitHub collaborator access is the default succession path.
+The repository is designed to be safe for public visibility after this audit passes. Public account QR codes, logos, organization contact details and published layout examples are not authentication secrets. They remain subject to the brand and content terms in `ASSET_NOTICE.md`; public visibility does not grant permission to impersonate BCL/TUS or republish third-party article content.
+
+GitHub collaborator access is needed only for maintainers who require write access. Reading and installation do not require an invitation while the repository is public.
 
 ## Reporting
 
