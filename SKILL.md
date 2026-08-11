@@ -1,6 +1,6 @@
 ---
 name: wechat-office-push
-description: "Generate WeChat public account (公众号) articles from academic PDFs and call-for-papers pages. Supports multiple content types: 论文推荐 (paper recommendation), 征文启事 (call for papers), and more. Use this skill whenever the user mentions: call for papers, CFP推送, 征文推送, 论文推荐, 征文启事, 公众号推送, 写推送, 推文, 公众号文章, WeChat article, 推送论文, 做一个推送, 帮我推论文, 论文推送, 生成推文, 会议推荐, MOOC推送, 教研动态, or any task related to creating content for a WeChat public account."
+description: "Create, deduplicate, format, verify, and save WeChat public-account drafts from academic PDFs, structured research briefs, journal catalogs, and call-for-papers pages. Use for BCL/TUS 论文推荐, 团队研究, CFP推送, 公众号去重, 双账号草稿, 阅读原文/合集/推荐语检查, or handoff and maintenance of the WeChat publishing workflow. Never infer permission to publish."
 ---
 
 # 公众号推送 Skill
@@ -42,16 +42,23 @@ description: "Generate WeChat public account (公众号) articles from academic 
   - `logo.png` — 账号 logo
 - **References**: `<skill_dir>/references/`
   - `publication-ledger.md` — 发布事实层级、台账字段与公众号后台检索规则
+  - `verified-workflow.md` — 已验证主路径、失败模式与适用边界；维护自动化或交接前阅读
 
 ## Dependencies
 
 ```bash
-pip install PyMuPDF requests beautifulsoup4
+python -m pip install -r "<skill_dir>/requirements.txt"
+```
+
+正式安装使用根目录 `requirements.txt`。Python 3.10+；后台自动填充因依赖 Windows UI Automation，仅支持 Windows。首次接手或环境变化时先运行：
+
+```bash
+python "<skill_dir>/scripts/preflight.py" --profile "<profile_path>" --backend --strict
 ```
 
 ## Profile 机制
 
-首次使用时，检查用户是否使用已知 profile（如 BCL）。若是，从 `profiles/<id>.json` 直接读取：
+跟踪的 `profiles/<id>.json` 只保存可共享的账号基础信息。首次使用时复制到被 Git 忽略的 `profiles/local/<id>.json`，在本机副本填写责任编辑与工作目录；执行时优先使用 local profile，没有 local 副本才读取基础 profile：
 - `account_name` — 公众号名称
 - `default_editor` — 默认责任编辑
 - `qrcode_filename` — 二维码在输出目录中的文件名
@@ -59,13 +66,22 @@ pip install PyMuPDF requests beautifulsoup4
 - `contact` — 邮箱/微博/微信号/网址
 - `default_working_dir` — 默认工作目录
 
-**BCL 默认值**：
+**BCL 基础值**：
 - 公众号名称：北京城市实验室BCL
-- 责任编辑：[责任编辑待配置]
-- 工作目录：`<work_dir>`
+- 责任编辑：留空，必须由当前负责人在 local profile 配置
+- 工作目录：留空，由用户指定或在 local profile 配置
 - QR 文件：`bcl_qrcode.jpeg`
 
-若用户使用新账号，询问一次后保存为新的 profile。
+若用户使用新账号，询问一次后先保存到 `profiles/local/`；只有去除个人信息并确认适合团队共享后，才提升为跟踪的基础 profile。
+
+## 交接与隐私边界
+
+- 新负责人首先完整阅读 `HANDOFF.md` 与 `SECURITY.md`。
+- 仓库默认保持 Private，通过 GitHub collaborator 交接；不要长期传递脱离版本历史的压缩包。
+- 公众号账号密码、扫码图、Cookie、请求头、后台 `token=` URL、`wxid_*`、个人邮箱、本机绝对路径、论文 PDF、截图和草稿不得进入 Git。
+- 登录只由负责人现场扫码；技能既不导出也不保存登录态。
+- 提交、交接或讨论公开前运行 `python "<skill_dir>/scripts/audit_repository.py"`。
+- 未确认 BCL/TUS 二维码、Logo、历史富文本模板和文章片段的公开授权前，不得把仓库改为 Public。
 
 ### BCL + TUS 双账号约定
 

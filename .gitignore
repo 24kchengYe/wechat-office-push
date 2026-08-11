@@ -1,1 +1,10 @@
 scripts/__pycache__/
+**/__pycache__/
+*.py[cod]
+.venv/
+output/
+profiles/local/
+*.env
+*.cookie
+*.session
+*.bundle

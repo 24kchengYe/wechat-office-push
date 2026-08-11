@@ -7,7 +7,7 @@
   "show_editor": false,
   "qrcode_filename": "",
   "qrcode_source": "",
-  "default_working_dir": "<work_dir>",
+  "default_working_dir": "",
   "account_intro": "扫码关注我们，获取更多期刊论文内容及相关资讯。",
   "footer_text": [
     "更多期刊资讯，请点击文末“阅读原文”，或复制【期刊主页链接】至浏览器搜索查看。欢迎来自所有国家和背景的作者投稿！",
@@ -23,5 +23,5 @@
   },
   "categories": {},
   "paper_template_config": "profiles/tus-paper-template.json",
-  "notes": "2026-08-03从TUS公众号已发表论文推荐核验。固定装饰图和二维码从该账号已发表模板继承，不从BCL profile复制；TUS账号的论文推送不选择合集。"
+  "notes": "固定装饰图和二维码从 TUS 账号已发表模板继承，不从 BCL profile 复制；TUS 账号的论文推送不选择合集。本机路径如有需要写入 profiles/local/tus.json。"
 }

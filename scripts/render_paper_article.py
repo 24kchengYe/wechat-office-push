@@ -26,6 +26,11 @@ def author_display(source: dict) -> tuple[str, list[str]]:
 
 
 def render(source: dict, profile: dict, output_dir: Path) -> None:
+    if profile.get("show_editor", False) and not profile.get("default_editor", "").strip():
+        raise ValueError(
+            "profile requires a responsible editor; create profiles/local/<id>.json "
+            "and set default_editor before rendering"
+        )
     output_dir.mkdir(parents=True, exist_ok=True)
     title_cn = source["title_cn"]
     title_en = source["title_en"]

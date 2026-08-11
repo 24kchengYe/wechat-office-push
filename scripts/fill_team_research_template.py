@@ -15,6 +15,7 @@ import html
 import json
 import re
 import time
+from datetime import datetime
 from pathlib import Path
 
 from bs4 import BeautifulSoup, Tag
@@ -103,17 +104,17 @@ def parse_docx(path: Path, images_dir: Path) -> dict:
         return output
 
     doi_url = metadata["doi_url"]
-    citation_full = (
-        "Hong, Q., Zhao, H., Jiang, Y., Cheng, C., & Long, Y. (2026). "
-        + metadata["title_en"]
-        + ". Habitat International, 176, 103944. "
-        + doi_url
-    )
+    citation = ""
+    if document.tables:
+        citation = clean(document.tables[0].cell(0, 0).text).removeprefix("原文信息：")
+    citation_full = citation
+    if doi_url and doi_url not in citation_full:
+        citation_full = (citation_full + " " + doi_url).strip()
     return {
         "headline": paragraphs[0],
         **metadata,
         "doi": doi_url.removeprefix("https://doi.org/"),
-        "citation": clean(document.tables[0].cell(0, 0).text).removeprefix("原文信息："),
+        "citation": citation,
         "citation_full": citation_full,
         "guide": items("guide"),
         "methods": items("methods"),
@@ -168,9 +169,13 @@ def content_block(items: list[dict]) -> str:
     return "".join(chunks)
 
 
+def display_authors(value: str) -> str:
+    author_names = re.sub(r"([A-Za-z]+)[abc](?=,|$)", r"\1", value)
+    return author_names.replace("*c", "*")
+
+
 def metadata_html(article: dict) -> str:
-    author_names = re.sub(r"([A-Za-z]+)[abc](?=,|$)", r"\1", article["authors"])
-    author_names = author_names.replace("*c", "*")
+    author_names = display_authors(article["authors"])
     rows = [
         ("【作者】", author_names),
         *[("", affiliation) for affiliation in article["affiliations"]],
@@ -203,7 +208,9 @@ def template_fragment(asset: Path, article: dict) -> str:
     heading_methods = str(roots[8]).replace("研究背景", "研究方法")
     heading_results = str(roots[10]).replace("研究结果", "研究结果与讨论")
     heading_significance = str(roots[12]).replace("基金资助", "研究意义")
-    year_art = str(roots[15]).replace("2025", "2026")
+    year_match = re.search(r"\b(20\d{2})\b", article.get("journal", ""))
+    publication_year = year_match.group(1) if year_match else str(datetime.now().year)
+    year_art = re.sub(r"20\d{2}", publication_year, str(roots[15]), count=1)
 
     return "".join(
         [
@@ -229,11 +236,21 @@ def template_fragment(asset: Path, article: dict) -> str:
     )
 
 
-def recommendation() -> str:
-    return (
-        "龙瀛团队新研究提出大语言模型增强的PREQ测度框架，利用多平台用户生成文本识别社区感知，"
-        "为社区诊断与城市更新优先级排序提供支持。论文发表于Habitat International。"
+def recommendation(article: dict) -> str:
+    guide_text = next(
+        (item["text"] for item in article.get("guide", []) if item["type"] == "paragraph"),
+        "",
     )
+    value = clean("。".join(part.strip("。") for part in [article["headline"], guide_text] if part))
+    if ui.recommendation_count(value) <= 120:
+        return value
+    shortened = ""
+    for character in value:
+        candidate = shortened + character
+        if ui.recommendation_count(candidate + "…") > 120:
+            break
+        shortened = candidate
+    return shortened.rstrip("，。；： ") + "…"
 
 
 def rich_editors(automation, root):
@@ -255,7 +272,7 @@ def rich_editors(automation, root):
     return title, body
 
 
-def select_codex_task(UIA, automation, root, hwnd: int, task_name: str = "BCL公众号"):
+def select_codex_task(UIA, automation, root, hwnd: int, task_name: str):
     matches = ui.find_all(automation, root, ui.UIA_NAME, task_name)
     for index in range(matches.Length):
         candidate = matches.GetElement(index)
@@ -270,8 +287,8 @@ def select_codex_task(UIA, automation, root, hwnd: int, task_name: str = "BCL公
 
 
 def set_platform_fields(UIA, automation, root, hwnd: int, article: dict) -> tuple[str, str]:
-    rec = recommendation()
-    if len(rec) > 120:
+    rec = recommendation(article)
+    if ui.recommendation_count(rec) > 120:
         raise ValueError("platform recommendation exceeds 120 characters")
     description = ui.find_first(automation, root, ui.UIA_AUTOMATION_ID, "js_description")
     ui.scroll_into_view(UIA, description)
@@ -293,14 +310,18 @@ def set_platform_fields(UIA, automation, root, hwnd: int, article: dict) -> tupl
     if not current_url:
         raise RuntimeError("current original link not found")
     if current_url.CurrentName != doi_url:
-        ui.click_element(automation.RawViewWalker.GetParentElement(current_url), hwnd)
+        ui.click_element(current_url, hwnd)
         url_input = ui.find_first(automation, root, ui.UIA_NAME, "输入或粘贴原文链接")
         url_input.GetCurrentPattern(ui.VALUE_PATTERN).QueryInterface(
             UIA.IUIAutomationValuePattern
         ).SetValue(doi_url)
         ui.invoke(UIA, ui.find_first(automation, root, ui.UIA_NAME, "确定"))
-        time.sleep(0.8)
+        time.sleep(1.5)
         root = automation.ElementFromHandle(hwnd)
+        url_area = ui.find_first(automation, root, ui.UIA_AUTOMATION_ID, "js_article_url_area")
+        saved_urls = ui.find_all(automation, url_area, ui.UIA_CONTROL_TYPE, 50020)
+        if not any(saved_urls.GetElement(index).CurrentName == doi_url for index in range(saved_urls.Length)):
+            raise RuntimeError("original link was not updated after confirmation")
 
     collection = "论文推荐"
     area = ui.find_first(automation, root, ui.UIA_AUTOMATION_ID, "js_article_tags_area")
@@ -348,6 +369,7 @@ def main() -> None:
     parser.add_argument("--docx", type=Path, required=True)
     parser.add_argument("--images-dir", type=Path, required=True)
     parser.add_argument("--hwnd", type=int, required=True)
+    parser.add_argument("--task-name", default="BCL公众号")
     parser.add_argument("--save-draft", action="store_true")
     parser.add_argument(
         "--settings-only",
@@ -363,7 +385,7 @@ def main() -> None:
     )
 
     UIA, automation, root = ui.uia_client(args.hwnd)
-    root = select_codex_task(UIA, automation, root, args.hwnd)
+    root = select_codex_task(UIA, automation, root, args.hwnd, args.task_name)
     if args.settings_only:
         checks = {"title_body_previously_validated": True}
     else:
@@ -394,7 +416,7 @@ def main() -> None:
         checks = {
             "headline": title_text == article["headline"],
             "paper_title": article["title_en"] in body_text,
-            "authors": "Qiyuan Hong" in body_text and "Ying Long" in body_text,
+            "authors": display_authors(article["authors"]).split(",", 1)[0] in body_text,
             "doi": article["doi"] in body_text,
             "guide": article["guide"][0]["text"][:30] in body_text,
             "method": article["methods"][0]["text"] in body_text,
@@ -425,7 +447,7 @@ def main() -> None:
                 "doi": article["doi"],
                 "checks": checks,
                 "platform_recommendation": rec,
-                "platform_recommendation_count": len(rec),
+                "platform_recommendation_count": ui.recommendation_count(rec),
                 "original_link": doi_url,
                 "collection": "论文推荐",
                 "saved_as_draft": saved,
