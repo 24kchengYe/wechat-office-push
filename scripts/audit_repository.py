@@ -20,11 +20,14 @@ FORBIDDEN = {
     "WeChat local account id": re.compile(r"wxid_[A-Za-z0-9_]+", re.I),
     "Windows user path": re.compile(r"C:" + r"\\Users\\" + r"[^\\\s]+", re.I),
     "private legacy work path": re.compile(r"D:" + r"[/\\]pythonPycharms[/\\]工具开发", re.I),
-    "legacy-agent co-author trailer": re.compile(r"Co-Authored-By\s*:\s*legacy-agent", re.I),
-    "legacy-provider co-author email": re.compile(r"noreply@legacy-provider\.com", re.I),
+    "co-author trailer": re.compile(r"Co-Authored-By\s*:", re.I),
     "private key": re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----", re.I),
     "GitHub access token": re.compile(r"\b(?:ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b"),
     "API secret": re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b"),
+    "disallowed legacy agent name": re.compile("".join(map(chr, [99, 108, 97, 117, 100, 101])), re.I),
+    "disallowed legacy provider name": re.compile(
+        "".join(map(chr, [97, 110, 116, 104, 114, 111, 112, 105, 99])), re.I
+    ),
 }
 
 

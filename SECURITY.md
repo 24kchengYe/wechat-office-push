@@ -4,7 +4,7 @@
 
 - WeChat passwords, QR-login captures, cookies, session data, request headers or backend URLs containing `token=`;
 - personal email addresses used only for Git authorship; use the GitHub noreply address instead;
-- local absolute paths, temporary WeChat folders, `wxid_*` identifiers or Codex/legacy-agent session data;
+- local absolute paths, temporary WeChat folders, `wxid_*` identifiers or AI assistant session data;
 - unpublished manuscripts, downloaded PDFs, generated drafts, screenshots or publication ledgers containing private work;
 - third-party API keys or credentials.
 

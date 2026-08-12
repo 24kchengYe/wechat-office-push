@@ -79,7 +79,7 @@
 
 ## 使用方式
 
-在 Codex、legacy-agent Code 或其它支持 Skill 的 AI Agent 中直接说：
+在 Codex 或其它支持 Skill 的 AI Agent 中直接说：
 
 ```
 # 论文推荐
@@ -127,7 +127,6 @@ git clone https://github.com/24kchengYe/wechat-office-push.git ~/.codex/skills/w
 # Codex, Windows
 git clone https://github.com/24kchengYe/wechat-office-push.git %USERPROFILE%\.codex\skills\wechat-office-push
 
-# legacy-agent Code 也可克隆到 ~/.legacy-agent/skills/wechat-office-push
 ```
 
 ### 依赖
@@ -214,7 +213,7 @@ wechat-office-push/
 
 ## 需求
 
-- Codex、legacy-agent Code 或其它支持 Skill 的 AI Agent
+- Codex 或其它支持 Skill 的 AI Agent
 - Python 3.10+（推荐 3.11）
 - 依赖见 `requirements.txt`
 - 自动录入公众号后台：Windows + 人工扫码登录

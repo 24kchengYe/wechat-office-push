@@ -14,7 +14,7 @@ py -3.11 -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
-如果使用 legacy-agent Code，可把同一仓库克隆到 `~/.legacy-agent/skills/wechat-office-push`。不要维护两套互相漂移的副本。
+不要维护两套互相漂移的技能副本。
 
 ## 2. 创建本机配置
 
